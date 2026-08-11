@@ -66,6 +66,13 @@
   .b-car i { background: #7ee0e8; }
   .b-rel i { background: #f49bc1; }
   .b-money i { background: #7ee081; }
+  .bar i.low { background: #ff5d5d !important; }
+  .bar i.hearts {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M4 7C2.5 5.8 1 4.7 1 3.2 1 2.2 1.8 1.4 2.8 1.4c.5 0 1 .2 1.2.7l.1.1.1-.1c.3-.5.7-.7 1.2-.7C6.2 1.4 7 2.2 7 3.2 7 4.7 5.5 5.8 4 7z' fill='%23ff8fa3'/></svg>");
+    background-repeat: repeat-x;
+    background-size: 8px 8px;
+    background-color: rgba(255,143,163,.15);
+  }
   #log {
     background: #1d2430; border: 2px solid #3a465a; border-radius: 10px;
     padding: 8px 10px; min-height: 58px; max-height: 108px; overflow-y: auto;
@@ -86,11 +93,40 @@
   #choices { display: flex; flex-direction: column; gap: 8px; }
   #choices.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #choices.grid2 .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .btn.lucky { animation: luckyPulse 1.1s infinite; border-color: #ffd166 !important; }
+  .btn.lucky-pulse { animation: luckyPulse 1.1s infinite; border-color: #ffd166 !important; }
+  .btn.lucky-bounce { animation: luckyBounce .7s infinite; border-color: #ffd166 !important; }
+  .btn.lucky-sparkle { animation: luckySparkle 1.2s infinite; border-color: #ffe08a !important; }
+  .btn.lucky-rainbow { animation: luckyRainbow 1.4s infinite; }
+  .btn.lucky-shake { animation: luckyShake .6s infinite; border-color: #ffd166 !important; }
   @keyframes luckyPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255,209,102,.55); }
     50% { box-shadow: 0 0 14px 3px rgba(255,209,102,.9); }
   }
+  @keyframes luckyBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes luckySparkle {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,224,138,.5); }
+    50% { box-shadow: 0 0 16px 5px rgba(255,224,138,.95); }
+  }
+  @keyframes luckyRainbow {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+  }
+  @keyframes luckyShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  #game.theme-car { background: linear-gradient(180deg,#1d2b22,#2c4030); }
+  #game.theme-home { background: linear-gradient(180deg,#3a2a24,#4a332b); }
+  #game.theme-lux { background: linear-gradient(180deg,#2b2313,#3d2f18); }
+  #game.theme-gold { background: linear-gradient(180deg,#332a12,#473a1a); }
+  #game.theme-stage { background: linear-gradient(180deg,#2a1d3d,#3b2855); }
+  #game.theme-book { background: linear-gradient(180deg,#2c2620,#42382e); }
+  #game.theme-glam { background: linear-gradient(180deg,#332033,#4a2a45); }
+  #game.theme-boss { background: linear-gradient(180deg,#3a1d1d,#552a26); }
   .btn {
     width: 100%; min-height: 46px;
     background: #3d7dd6; color: #fff; border: 3px solid #5a97e8;
@@ -132,6 +168,23 @@
   }
   .modal .box h2 { margin: 0 0 8px; font-size: 18px; color: #ffd166; }
   .modal .box p { font-size: 14px; line-height: 1.6; margin: 6px 0; }
+  .ticketBar {
+    margin-top: 10px; text-align: center; font-size: 13px; color: #ffd166;
+    background: rgba(255,209,102,.12); border: 2px dashed #ffd166;
+    border-radius: 10px; padding: 7px 8px;
+  }
+  #goldFlash {
+    position: fixed; inset: 0; z-index: 1000; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 64px;
+    background: radial-gradient(circle, rgba(255,215,90,.55), rgba(255,215,90,0) 70%);
+    animation: goldZoom 1.2s ease-out forwards;
+  }
+  @keyframes goldZoom {
+    0% { transform: scale(.3); opacity: 0; }
+    25% { opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
   #fishing {
     width: 100%; height: 46px; background: #1d2430;
     border: 3px solid #48566b; border-radius: 12px; position: relative;
@@ -210,14 +263,15 @@ var ACH = [
   { id: 'late',     t: '夜猫子',     d: '熬夜 3 次' },
   { id: 'grandma',  t: '外婆家',     d: '去外婆家看她一次' },
   { id: 'luck33',   t: '幸运33',     d: '玩到第 33 天' },
-  { id: 'benz',     t: '大奔驰',     d: '被柚柚包养，收到大奔驰' }
+  { id: 'benz',     t: '大奔驰',     d: '被柚柚包养，收到大奔驰' },
+  { id: 'ticket',   t: '奖券得主',   d: '极低概率获得神秘奖券' }
 ];
 
 var EVENTS = [
   { t: '早上出门堵车了，心情-5', m: -5 },
   { t: '下起小雨，车身溅了点泥，车况-6', m: -2, car: -6 },
   { t: '路边捡到 500 元！', m: 4, money: 500 },
-  { t: '柚柚突然送来一杯冰饮，体力+15', e: 15, rel: 20, m: 6 },
+  { t: '柚柚突然送来一杯冰饮，体力+15', e: 15, rel: 8, m: 6 },
   { t: '读者夸你编的《大三年》好看，心情+8', m: 8 },
   { t: '路边遇到一只小橘猫，心情+6', m: 6 },
   { t: '油费涨价，-200 元', money: -200, m: -2 },
@@ -226,13 +280,14 @@ var EVENTS = [
   { t: '空调坏了，车里闷得慌，得去修', m: -8, carIssue: 'ac' },
   { t: '晚上星空超好看，心情+5', m: 5 },
   { t: '你看到一辆车牌号是 33 的车，心情+3', m: 3 },
-  { t: '地上捡到 33 元！好运！', money: 33, m: 2 }
+  { t: '地上捡到 33 元！好运！', money: 33, m: 2 },
+  { t: '停车费 10 元', money: -10, m: -1 }
 ];
 
 var COHABIT_EVENTS = [
   { t: '柚柚做了爱心早餐，体力+10，心情+5', e: 10, m: 5 },
-  { t: '柚柚帮你整理好衣服，心情+4，关系+30', m: 4, rel: 30 },
-  { t: '晚上柚柚弹了一首曲子，心情+6，关系+40', m: 6, rel: 40 },
+  { t: '柚柚帮你整理好衣服，心情+4，关系+12', m: 4, rel: 12 },
+  { t: '晚上柚柚弹了一首曲子，心情+6，关系+15', m: 6, rel: 15 },
   { t: '两人抢遥控器，最后一起看动画片，心情+3', m: 3 }
 ];
 
@@ -247,8 +302,8 @@ var WORK_BUFFS = [
 
 var BIG_EVENTS = [
   { t: '🌊 瓦尔登湖发大水，出版社放假一天！', e: 20, m: 10 },
-  { t: '🎆 瓦尔登湖烟花大会！', e: 5, m: 18, rel: 60 },
-  { t: '🎂 今天是柚柚生日！你偷偷准备了惊喜', e: 10, m: 20, rel: 200 },
+  { t: '🎆 瓦尔登湖烟花大会！', e: 5, m: 18, rel: 25 },
+  { t: '🎂 今天是柚柚生日！你偷偷准备了惊喜', e: 10, m: 20, rel: 60 },
   { t: '🚀 出版社上市敲钟！全员分红', money: 50000, m: 15 },
   { t: '🦁 路上遇到马戏团巡游，跟着玩了一整天', e: -10, m: 25 },
   { t: '🌠 流星雨！你许了一个愿', e: 20, m: 20 },
@@ -354,6 +409,12 @@ function mainCharSprite(x, y, s) {
       px(x - 2 * s, y + 11 * s, s, s, '#fff3b0');
     }
   }
+  if (S().kingDay > 0) {
+    px(x + 4 * s, y - 2 * s, 4 * s, s, '#ffd166');
+    px(x + 3 * s, y - 3 * s, s, s, '#ffd166');
+    px(x + 8 * s, y - 3 * s, s, s, '#ffd166');
+    px(x + 4 * s, y - 4 * s, 2 * s, s, '#e0528a');
+  }
 }
 function yoyoSprite(x, y, s) {
   sprite(YOYO, x, y, s, {
@@ -381,7 +442,8 @@ function newGame() {
     carIssue: null, tsundere: false, melancholy: false,
     stock: null, lateNights: 0, grandmaSeen: false, swanNight: false,
     workBuff: null, equip: {}, pets: [], ugly: false, handsome: false,
-    routes: {}, uglyCount: 0, handsomeCount: 0
+    routes: {}, uglyCount: 0, handsomeCount: 0, askedYoyo: false, theme: 'default',
+    tickets: {}, freeParking: 0, kingDay: 0
   };
 }
 function S() { return window.__S; }
@@ -457,8 +519,9 @@ var SFX = (function() {
     step = 0; nextT = ctx.currentTime + 0.1;
     bgmTimer = setInterval(function() {
       var c = ac(); if (!c) return;
+      var mlist = (typeof S === 'function' && S() && MELODIES[S().theme]) ? MELODIES[S().theme] : MELODIES.default;
       while (nextT < c.currentTime + 0.28) {
-        var n = MELODY[step % MELODY.length];
+        var n = mlist[step % mlist.length];
         tone(n[0], n[1], 'triangle', 0.07, nextT - c.currentTime, undefined, true);
         nextT += n[1] * 0.94;
         step++;
@@ -466,6 +529,14 @@ var SFX = (function() {
     }, 150);
   }
   function stopMusic() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
+  function tp() {
+    var t = 1;
+    try {
+      var g = S();
+      if (g && g.theme) t = ({ default: 1, car: 1.08, home: 0.92, lux: 0.82, gold: 1.18, stage: 1.14, book: 0.95, glam: 1.1, boss: 0.9 }[g.theme] || 1);
+    } catch (e) {}
+    return t;
+  }
 
   return {
     ensure: ac,
@@ -484,27 +555,71 @@ var SFX = (function() {
     },
     initMusic: function() { if (musicOn) startMusic(); },
     click: function() { tone(660, 0.06, 'square', 0.05); },
-    coin: function() { tone(1318, 0.08, 'square', 0.09); tone(1760, 0.16, 'square', 0.09, 0.09); },
-    correct: function() { seq([523, 659, 784, 1047], 'square', 0.1, 0.12, 0.09); },
+    coin: function() { var p = tp(); tone(1318 * p, 0.08, 'square', 0.09); tone(1760 * p, 0.16, 'square', 0.09, 0.09); },
+    correct: function() { var p = tp(); seq([523 * p, 659 * p, 784 * p, 1047 * p], 'square', 0.1, 0.12, 0.09); },
     wrong: function() { tone(220, 0.22, 'sawtooth', 0.08, 0, 130); },
     pop: function() { tone(420, 0.08, 'square', 0.08, 0, 820); },
     splash: function() { noise(0.35, 0.2, 900); tone(300, 0.2, 'sine', 0.06, 0, 90); },
-    fanfare: function() { seq([523, 659, 784, 1047, 1318], 'triangle', 0.12, 0.2, 0.12); },
+    fanfare: function() { var p = tp(); seq([523 * p, 659 * p, 784 * p, 1047 * p, 1318 * p], 'triangle', 0.12, 0.2, 0.12); },
     chime: function() { tone(1047, 0.3, 'triangle', 0.1); tone(1568, 0.4, 'triangle', 0.08, 0.12); },
     ktv: function() { seq([659, 784, 880, 784, 880, 1047, 880, 784], 'triangle', 0.09, 0.14, 0.13); }
   };
 })();
 
-var MELODY = [
-  [523, 0.27], [659, 0.27], [784, 0.27], [659, 0.27],
-  [880, 0.27], [784, 0.27], [659, 0.27], [523, 0.27],
-  [587, 0.27], [698, 0.27], [880, 0.27], [698, 0.27],
-  [988, 0.27], [880, 0.27], [698, 0.27], [587, 0.27],
-  [523, 0.27], [659, 0.27], [784, 0.27], [1047, 0.27],
-  [880, 0.27], [784, 0.27], [659, 0.27], [587, 0.27],
-  [523, 0.27], [587, 0.27], [659, 0.27], [784, 0.27],
-  [880, 0.54], [784, 0.27], [659, 0.54]
-];
+var MELODIES = {
+  default: [
+    [523, 0.27], [659, 0.27], [784, 0.27], [659, 0.27],
+    [880, 0.27], [784, 0.27], [659, 0.27], [523, 0.27],
+    [587, 0.27], [698, 0.27], [880, 0.27], [698, 0.27],
+    [988, 0.27], [880, 0.27], [698, 0.27], [587, 0.27],
+    [523, 0.27], [659, 0.27], [784, 0.27], [1047, 0.27],
+    [880, 0.27], [784, 0.27], [659, 0.27], [587, 0.27],
+    [523, 0.27], [587, 0.27], [659, 0.27], [784, 0.27],
+    [880, 0.54], [784, 0.27], [659, 0.54]
+  ],
+  car: [
+    [659, 0.2], [784, 0.2], [880, 0.2], [784, 0.2],
+    [880, 0.2], [1047, 0.2], [880, 0.2], [784, 0.2],
+    [587, 0.2], [698, 0.2], [880, 0.2], [698, 0.2],
+    [784, 0.4], [659, 0.2], [587, 0.4]
+  ],
+  home: [
+    [523, 0.34], [659, 0.34], [784, 0.34], [659, 0.34],
+    [587, 0.34], [698, 0.34], [880, 0.5], [698, 0.34],
+    [523, 0.34], [659, 0.34], [784, 0.5], [659, 0.34],
+    [587, 0.68]
+  ],
+  lux: [
+    [392, 0.4], [523, 0.4], [587, 0.4], [523, 0.4],
+    [440, 0.4], [587, 0.4], [659, 0.6], [392, 0.4],
+    [523, 0.8]
+  ],
+  stage: [
+    [659, 0.18], [784, 0.18], [1047, 0.18], [880, 0.18],
+    [784, 0.18], [1047, 0.18], [1318, 0.3], [1047, 0.18],
+    [880, 0.18], [784, 0.18], [659, 0.3], [880, 0.36]
+  ],
+  gold: [
+    [523, 0.22], [659, 0.22], [784, 0.22], [1047, 0.22],
+    [880, 0.22], [784, 0.22], [659, 0.22], [880, 0.22],
+    [1047, 0.44], [784, 0.22], [659, 0.44]
+  ],
+  book: [
+    [494, 0.3], [587, 0.3], [659, 0.3], [587, 0.3],
+    [523, 0.3], [659, 0.3], [698, 0.5], [587, 0.3],
+    [494, 0.6]
+  ],
+  glam: [
+    [587, 0.24], [740, 0.24], [880, 0.24], [740, 0.24],
+    [880, 0.24], [1110, 0.24], [880, 0.24], [740, 0.24],
+    [587, 0.48]
+  ],
+  boss: [
+    [440, 0.32], [554, 0.32], [659, 0.32], [554, 0.32],
+    [494, 0.32], [659, 0.32], [740, 0.5], [554, 0.32],
+    [440, 0.64]
+  ]
+};
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function addStat(k, v) {
@@ -554,6 +669,10 @@ function rollWeather() {
 }
 function rollEvent() {
   var g = S();
+  if (Math.random() < 0.008) {
+    ticketEvent(g);
+    return;
+  }
   if (Math.random() < 0.03 && !g.grandmaSeen) {
     g.grandmaSeen = true;
     unlock('grandma');
@@ -576,6 +695,12 @@ function rollEvent() {
   if (Math.random() > 0.38) return;
   var list = (S().liveTogether && Math.random() < 0.5) ? COHABIT_EVENTS : EVENTS;
   var e = list[Math.floor(Math.random() * list.length)];
+  if (e.t && e.t.indexOf('停车费') >= 0 && g.freeParking > 0) {
+    g.freeParking--;
+    log('🅿️ 奖券生效：停车费免单！（还剩 ' + g.freeParking + ' 次）', 'ok');
+    SFX.coin();
+    return;
+  }
   if (e.m) addStat('mood', e.m);
   if (e.e) addStat('energy', e.e);
   if (e.car) addStat('carClean', e.car);
@@ -587,17 +712,47 @@ function rollEvent() {
   log('⚡ ' + e.t, e.money < 0 || (e.m && e.m < 0) ? 'bad' : 'ok');
 }
 
+function ticketEvent(g) {
+  showGoldFlash();
+  SFX.fanfare();
+  unlock('ticket');
+  log('🎮 概率极低！你在车里偷偷打了一把 Dota（31-4-125），手感爆炸，系统看傻了，送你一张神秘奖券！', 'big');
+  var prizes = [
+    { id: 'massage', name: '💆 按摩 15 分钟', apply: function() { addStat('mood', 20); addStat('energy', 15); } },
+    { id: 'parking', name: '🅿️ 停车费免单 ×5', apply: function() { g.freeParking += 5; } },
+    { id: 'hongbao', name: '🧧 52 块红包', apply: function() { addMoney(52); } },
+    { id: 'king', name: '👑 当一天国王', apply: function() { g.kingDay = 1; } }
+  ];
+  var p = prizes[Math.floor(Math.random() * prizes.length)];
+  if (!g.tickets) g.tickets = {};
+  g.tickets[p.id] = (g.tickets[p.id] || 0) + 1;
+  log('🎟️ 你从奖券里抽到了：' + p.name + '！', 'big');
+  p.apply();
+  save();
+}
+function showGoldFlash() {
+  var d = document.createElement('div');
+  d.id = 'goldFlash';
+  d.textContent = '🎟️✨';
+  document.body.appendChild(d);
+  setTimeout(function() { if (d && d.remove) d.remove(); }, 1300);
+}
+
 function choices(list) {
   var box = $('choices');
   box.innerHTML = '';
   box.className = list.length > 3 ? 'grid2' : '';
   var luckyIdx = -1;
-  if (list.length > 1 && Math.random() < 0.18) luckyIdx = Math.floor(Math.random() * list.length);
+  var luckyFx = '';
+  if (list.length > 1 && Math.random() < 0.18) {
+    luckyIdx = Math.floor(Math.random() * list.length);
+    luckyFx = ['lucky-pulse', 'lucky-bounce', 'lucky-sparkle', 'lucky-rainbow', 'lucky-shake'][Math.floor(Math.random() * 5)];
+  }
   list.forEach(function(item, idx) {
     var b = document.createElement('button');
     b.type = 'button';
     var lucky = idx === luckyIdx;
-    b.className = 'btn ' + (item.cls || '') + (lucky ? ' lucky' : '');
+    b.className = 'btn ' + (item.cls || '') + (lucky ? ' ' + luckyFx : '');
     b.textContent = (lucky ? '🍀 ' : '') + item.text;
     b.onclick = function() {
       SFX.click();
@@ -621,7 +776,17 @@ function renderTop() {
   $('dayNum').textContent = S().day;
   $('moneyNum').textContent = S().money;
   $('weatherLabel').textContent = weatherNow().ico + ' ' + weatherNow().name;
-  $('carLabel').textContent = S().car === 'bao5' ? '🚙 豹5' : (S().car === 'benz' ? '🚗 大奔驰' : '🚗 小别克');
+  $('carLabel').innerHTML = carIcon() + ' <span>' + (S().car === 'bao5' ? '豹5' : (S().car === 'benz' ? '大G' : '小别克')) + '</span>';
+}
+function carIcon() {
+  var c = S().car;
+  if (c === 'bao5') {
+    return '<svg width="26" height="16" viewBox="0 0 26 16" style="vertical-align:-2px"><rect x="1" y="6" width="24" height="8" rx="1" fill="#a8d68a" stroke="#5c8a4a"/><rect x="5" y="3" width="6" height="4" fill="#bfe8a4"/><rect x="13" y="3" width="6" height="4" fill="#bfe8a4"/><rect x="2" y="1" width="7" height="2" fill="#8fc173"/><circle cx="7" cy="14" r="2" fill="#2a2f38"/><circle cx="19" cy="14" r="2" fill="#2a2f38"/></svg>';
+  }
+  if (c === 'benz') {
+    return '<svg width="26" height="16" viewBox="0 0 26 16" style="vertical-align:-2px"><rect x="2" y="5" width="22" height="9" rx="1.5" fill="#1f2329" stroke="#000"/><rect x="6" y="2" width="5" height="4" fill="#3a3f47"/><rect x="15" y="2" width="5" height="4" fill="#3a3f47"/><rect x="11" y="5" width="4" height="2" fill="#3a3f47"/><circle cx="8" cy="14" r="2.2" fill="#2a2f38" stroke="#555"/><circle cx="18" cy="14" r="2.2" fill="#2a2f38" stroke="#555"/><text x="13" y="12" font-size="4" fill="#c9a45c" text-anchor="middle">G</text></svg>';
+  }
+  return '<svg width="26" height="16" viewBox="0 0 26 16" style="vertical-align:-2px"><rect x="1" y="6" width="24" height="7" rx="2" fill="#f4f6f8" stroke="#b9c2cc"/><rect x="5" y="3" width="5" height="4" fill="#cfe4f5"/><rect x="12" y="3" width="5" height="4" fill="#cfe4f5"/><rect x="18" y="3" width="4" height="4" fill="#cfe4f5"/><circle cx="7" cy="13" r="2" fill="#2a2f38"/><circle cx="19" cy="13" r="2" fill="#2a2f38"/></svg>';
 }
 function renderStats() {
   var map = [
@@ -635,8 +800,15 @@ function renderStats() {
   var html = '';
   map.forEach(function(m) {
     var v = S()[m[0]];
-    var cap = m[2] ? '/' + m[2] : '';
-    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span><span>' + Math.round(v) + cap + '</span></div></div>';
+    if (m[2] === 0) {
+      html += '<div class="stat"><div class="label"><span>' + m[1] + '</span><span>' + Math.round(v) + '</span></div></div>';
+      return;
+    }
+    var pct = Math.max(0, Math.min(100, v / m[2] * 100));
+    var low = pct < 60 ? ' low' : '';
+    var hearts = (m[0] === 'rel' && v >= 520) ? ' hearts' : '';
+    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span></div>' +
+      '<div class="bar"><i class="' + low + hearts + '" style="width:' + pct + '%"></i></div></div>';
   });
   $('stats').innerHTML = html;
 }
@@ -988,28 +1160,49 @@ function showChoicesOf(phase) {
 }
 function morningChoicesUI() {
   var g = S();
-  var arr = [
+  if (g.liveTogether) {
+    g.withYoyo = true;
+    morningMainChoices();
+    return;
+  }
+  if (!g.askedYoyo) {
+    choices([
+      { text: '👩 叫上柚柚一起', cls: 'pink', fn: function() {
+        g.withYoyo = true;
+        g.askedYoyo = true;
+        log('你打电话给柚柚，她开心地上了车', 'ok');
+        setScene('car');
+        morningMainChoices();
+      } },
+      { text: '🙅 今天自己出发', cls: 'gray', fn: function() {
+        g.withYoyo = false;
+        g.askedYoyo = true;
+        log('今天一个人出发', '');
+        morningMainChoices();
+      } }
+    ]);
+  } else {
+    morningMainChoices();
+  }
+}
+function morningMainChoices() {
+  var g = S();
+  if (Math.random() < 0.25) {
+    var e = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+    if (e.m) addStat('mood', e.m);
+    if (e.e) addStat('energy', e.e);
+    if (e.car) addStat('carClean', e.car);
+    if (e.rel) addStat('rel', e.rel);
+    if (e.money) addMoney(e.money);
+    if (e.carIssue) g.carIssue = e.carIssue;
+    if (e.money > 0) SFX.coin();
+    if (e.money < 0) SFX.wrong();
+    log('⚡ 出门前的小插曲：' + e.t, e.money < 0 || (e.m && e.m < 0) ? 'bad' : 'ok');
+  }
+  choices([
     { text: '💼 上班（去川川出版社）', cls: 'green', fn: startWork },
     { text: '🎒 出去玩', cls: 'pink', fn: choosePlay }
-  ];
-  if (!g.liveTogether) {
-    if (!g.withYoyo) {
-      arr.push({ text: '👩 叫上柚柚一起', cls: 'orange', fn: function() {
-        g.withYoyo = true;
-      addStat('rel', 20);
-      log('你打电话给柚柚，她开心地上了车，关系 +20', 'ok');
-        setScene('car');
-        morningChoicesUI();
-      } });
-    } else {
-      arr.push({ text: '👋 今天不带柚柚', cls: 'gray', fn: function() {
-        g.withYoyo = false;
-        log('柚柚今天有安排，你自己出发', '');
-        morningChoicesUI();
-      } });
-    }
-  }
-  choices(arr);
+  ]);
 }
 
 function startWork() {
@@ -1042,7 +1235,7 @@ function workQ(n, score) {
     addMoney(earn);
     addStat('energy', -12);
     addStat('mood', g.withYoyo ? 0 : -4);
-    if (g.withYoyo) addStat('rel', 30);
+    if (g.withYoyo) addStat('rel', 15);
     SFX.coin();
     log('下班啦！工资 +' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
     unlock('work1');
@@ -1101,11 +1294,11 @@ function parkWalk() {
     log('你和柚柚在公园散步，走着走着开始猜拳！', '');
     rpsGame(3, function(wins) {
       if (wins >= 2) {
-        addStat('rel', 80); addStat('mood', 10);
-        log('你猜拳赢了！柚柚笑着追你，关系+80，心情+10', 'ok');
+      addStat('rel', 25); addStat('mood', 10);
+      log('你猜拳赢了！柚柚笑着追你，关系+25，心情+10', 'ok');
       } else {
-        addStat('rel', 40); addStat('mood', 5);
-        log('你猜拳输给柚柚，她得意地晃脑袋，关系+40，心情+5', '');
+      addStat('rel', 15); addStat('mood', 5);
+      log('你猜拳输给柚柚，她得意地晃脑袋，关系+15，心情+5', '');
       }
       afterPark();
     });
@@ -1118,8 +1311,8 @@ function parkWalk() {
 function afterPark() {
   var g = S();
   if (Math.random() < 0.45) {
-    addStat('rel', 80);
-    log('偶遇柚柚！她陪你走了一圈，关系 +80', 'ok');
+    addStat('rel', 30);
+    log('偶遇柚柚！她陪你走了一圈，关系 +30', 'ok');
     g.withYoyo = true;
   }
   unlock('play1');
@@ -1149,7 +1342,7 @@ function mountainPicnic() {
         addStat('mood', 8);
         log('蚂蚁偷走了 ' + (3 - got) + ' 块饼干，野餐有点狼狈，心情+8', '');
       }
-      if (g2.withYoyo) { addStat('rel', 40); log('柚柚在旁边笑你手忙脚乱，关系+40', 'ok'); }
+  if (g2.withYoyo) { addStat('rel', 15); log('柚柚在旁边笑你手忙脚乱，关系+15', 'ok'); }
       unlock('picnic');
       afterPicnic();
     });
@@ -1257,14 +1450,14 @@ function eat(kind) {
       cookGame(function(ok) {
         var g2 = S();
         addStat('full', 15 + ok * 5);
-        addStat('rel', 40 + ok * 20);
+        addStat('rel', 15 + ok * 8);
         addStat('mood', 5 + ok * 3);
         addStat('energy', 15);
         if (ok >= 3) {
           SFX.fanfare();
-          log('你和柚柚做出了一桌好菜！饱腹+' + (15 + ok * 5) + '，关系+' + (40 + ok * 20) + '，体力+15', 'ok');
+          log('你和柚柚做出了一桌好菜！饱腹+' + (15 + ok * 5) + '，关系+' + (15 + ok * 8) + '，体力+15', 'ok');
         } else {
-          log('饭做出来了，虽然有点糊……饱腹+' + (15 + ok * 5) + '，关系+' + (40 + ok * 20) + '，体力+15', '');
+          log('饭做出来了，虽然有点糊……饱腹+' + (15 + ok * 5) + '，关系+' + (15 + ok * 8) + '，体力+15', '');
         }
         log('柚柚还做了冰饮料，清爽！', 'ok');
         g2.vis.ice++;
@@ -1292,22 +1485,22 @@ function carAct(act) {
       g.vis.ktv++;
       SFX.ktv();
       log(base + '，自己举着麦克风飙高音！心情 +' + (8 + micBonus), 'ok');
-      if (g.withYoyo) { addStat('mood', 4); log('柚柚在旁边给你鼓掌，关系 +30', 'ok'); addStat('rel', 30); }
+      if (g.withYoyo) { addStat('mood', 4); log('柚柚在旁边给你鼓掌，关系 +15', 'ok'); addStat('rel', 15); }
       if (Math.random() < 0.3) {
         g.handsome = true;
         g.handsomeCount++;
         addStat('mood', 5);
-        if (g.withYoyo) addStat('rel', 30);
-        log('✨ 你刚才唱歌的样子帅到发光！' + (g.withYoyo ? '柚柚看呆了，关系+30' : '心情+5'), 'ok');
+        if (g.withYoyo) addStat('rel', 15);
+        log('✨ 你刚才唱歌的样子帅到发光！' + (g.withYoyo ? '柚柚看呆了，关系+15' : '心情+5'), 'ok');
       }
       if (Math.random() < (g.melancholy ? 0.5 : 0.15)) {
         SFX.fanfare();
         addStat('mood', 15);
-        if (g.withYoyo) addStat('rel', 100);
+        if (g.withYoyo) addStat('rel', 40);
         g.handsome = true;
         g.handsomeCount++;
         if (Math.random() < 0.2) log('🎸 舞台边似乎有个身影对你竖了个大拇指……', '');
-        log('🎤 歌神附体！一首《泪桥》唱得全车安静，心情+15' + (g.withYoyo ? '，关系+100' : ''), 'ok');
+        log('🎤 歌神附体！一首《泪桥》唱得全车安静，心情+15' + (g.withYoyo ? '，关系+40' : ''), 'ok');
         unlock('godsing');
       }
       if (g.vis.ktv >= 5) unlock('ktv5');
@@ -1315,14 +1508,14 @@ function carAct(act) {
     case 'yoyoktv':
       if (g.withYoyo) {
         addStat('mood', 10);
-        addStat('rel', 50);
+        addStat('rel', 25);
         if (g.equip && g.equip.guitar) {
-          addStat('rel', 30);
-          log('🎸 柚柚拿起木吉他边弹边唱，关系+30', 'ok');
+          addStat('rel', 15);
+          log('🎸 柚柚拿起木吉他边弹边唱，关系+15', 'ok');
         }
         g.vis.ktv++;
         SFX.ktv();
-        log('柚柚唱了一首甜甜的歌，你边开车边笑，关系 +50', 'ok');
+        log('柚柚唱了一首甜甜的歌，你边开车边笑，关系 +25', 'ok');
         if (g.vis.ktv >= 5) unlock('ktv5');
       } else {
         addStat('mood', 3);
@@ -1340,17 +1533,17 @@ function carAct(act) {
         rpsGame(3, function(wins) {
           var g2 = S();
           if (wins >= 2) {
-            addStat('rel', -40);
+            addStat('rel', -30);
             addStat('mood', -4);
-            log('你赢了猜拳，柚柚气鼓鼓地别过头，关系-40', 'bad');
+            log('你赢了猜拳，柚柚气鼓鼓地别过头，关系-30', 'bad');
           } else {
-            addStat('rel', -90);
+            addStat('rel', -60);
             addStat('mood', -8);
-            log('你输了猜拳，只好先低头道歉，关系-90', 'bad');
+            log('你输了猜拳，只好先低头道歉，关系-60', 'bad');
             if (Math.random() < 0.4) {
-              addStat('rel', 60);
+              addStat('rel', 25);
               addStat('mood', 4);
-              log('到了家楼下，柚柚把冰饮料塞给你，算是和好啦，关系+60', 'ok');
+              log('到了家楼下，柚柚把冰饮料塞给你，算是和好啦，关系+25', 'ok');
             }
           }
           unlock('fight1');
@@ -1364,9 +1557,9 @@ function carAct(act) {
       break;
     case 'guitar':
       addStat('mood', 10);
-      addStat('rel', 50);
+      addStat('rel', 25);
       SFX.ktv();
-      log('柚柚抱着吉他弹了一首温柔的曲子，关系+50，心情+10', 'ok');
+      log('柚柚抱着吉他弹了一首温柔的曲子，关系+25，心情+10', 'ok');
       carAfterAct();
       break;
   }
@@ -1454,17 +1647,17 @@ function cohabitAct(kind) {
   var g = S();
   switch (kind) {
     case 'cook':
-      addStat('full', 20); addStat('rel', 50); addStat('mood', 6);
+      addStat('full', 20); addStat('rel', 25); addStat('mood', 6);
       SFX.pop();
       log('和柚柚一起煮了碗面，她偷偷多给你加了个蛋', 'ok');
       break;
     case 'tv':
-      addStat('mood', 10); addStat('rel', 60);
+      addStat('mood', 10); addStat('rel', 30);
       SFX.ktv();
       log('两人窝在沙发上看剧，她靠在你肩膀上睡着了', 'ok');
       break;
     case 'star':
-      addStat('mood', 8); addStat('rel', 70);
+      addStat('mood', 8); addStat('rel', 35);
       SFX.chime();
       log('阳台上看星星，柚柚数着星座，声音越来越小', 'ok');
       break;
@@ -1552,13 +1745,13 @@ function calmTsundere() {
   rpsGame(1, function(wins) {
     if (wins >= 1) {
       g.tsundere = false;
-      addStat('rel', 60);
+      addStat('rel', 25);
       addStat('mood', 10);
-      log('你赢了猜拳，柚柚噗嗤一笑："算你厉害啦！" 傲娇解除，关系+60', 'ok');
+      log('你赢了猜拳，柚柚噗嗤一笑："算你厉害啦！" 傲娇解除，关系+25', 'ok');
       SFX.fanfare();
     } else {
-      addStat('rel', -30);
-      log('你输了猜拳，柚柚哼得更大声了……关系-30（明天再哄吧）', 'bad');
+      addStat('rel', -20);
+      log('你输了猜拳，柚柚哼得更大声了……关系-20（明天再哄吧）', 'bad');
     }
     showNight();
   });
@@ -1718,6 +1911,8 @@ function checkRoutes() {
       showRouteCard(r);
       log(r.icon + ' 新路线解锁：' + r.name, 'big');
       if (r.onTrigger) r.onTrigger(g);
+      var RT = { tycoon: 'gold', mayun: 'boss', star: 'glam', novelist: 'book', singer: 'stage', kept: 'lux' };
+      if (RT[r.id]) setTheme(RT[r.id]);
     }
   }
   for (var j = 0; j < ROUTES.length; j++) {
@@ -1731,6 +1926,13 @@ function showRouteCard(r) {
   box.innerHTML = '<div class="box"><h2>' + r.icon + ' ' + r.name + '</h2><p>' + r.desc + '</p><button type="button" class="btn green" id="routeClose">太棒了！</button></div>';
   document.body.appendChild(box);
   box.querySelector('#routeClose').onclick = function() { SFX.click(); box.remove(); };
+}
+function setTheme(name) {
+  var g = S();
+  g.theme = name || 'default';
+  var el = document.getElementById('game');
+  if (el) el.className = 'theme-' + g.theme;
+  if (SFX.isMusicOn()) { SFX.stopMusic(); SFX.startMusic(); }
 }
 
 /* ===== 小游戏：猜拳 / 拍蚂蚁 / 做饭 ===== */
@@ -1822,6 +2024,7 @@ function buyBao5() {
   if (g.money < 300000) { log('钱不够，还需要 ' + (300000 - g.money) + ' 元', 'bad'); return; }
   addMoney(-300000);
   g.car = 'bao5';
+  setTheme('car');
   SFX.fanfare();
   SFX.coin();
   log('🎉 提车！浅绿色豹5到手，以后可以在车里睡觉了！', 'ok');
@@ -1841,6 +2044,7 @@ function sleep() {
     g.withYoyo = true;
     SFX.fanfare();
     unlock('cohabit');
+    setTheme('home');
     showCohabitCard();
     log('💕 柚柚红着脸说：我想搬来和你一起住……', 'ok');
   }
@@ -1859,6 +2063,7 @@ function sleep() {
 function nextDay() {
   var g = S();
   g.day++;
+  g.askedYoyo = false;
   SFX.chime();
   g.withYoyo = g.withYoyo && Math.random() < 0.75;
   if (g.liveTogether) {
@@ -1889,7 +2094,7 @@ function nextDay() {
   if (g.equip) {
     if (g.equip.phone) addStat('mood', 3);
     if (g.equip.house) { addStat('energy', 5); addStat('mood', 5); }
-    if (g.equip.guitar && g.withYoyo) addStat('rel', 10);
+    if (g.equip.guitar && g.withYoyo) addStat('rel', 5);
   }
   if (g.pets && g.pets.length) {
     for (var pi = 0; pi < g.pets.length; pi++) addStat('mood', 3);
@@ -1901,8 +2106,8 @@ function nextDay() {
   if (g.ugly) {
     addStat('mood', -3);
     if (g.withYoyo) {
-      addStat('rel', 20);
-      log('柚柚看到你的黑眼圈，又心疼又好笑，关系+20', 'ok');
+      addStat('rel', 8);
+      log('柚柚看到你的黑眼圈，又心疼又好笑，关系+8', 'ok');
     } else {
       log('顶着黑眼圈出门，今天有点憔悴，心情-3', 'bad');
     }
@@ -1912,6 +2117,13 @@ function nextDay() {
     addStat('mood', 5);
     log('✨ 昨天K歌太帅，今天走路都带风，心情+5', 'ok');
     g.handsome = false;
+  }
+  if (g.kingDay > 0) {
+    addStat('mood', 20);
+    addStat('energy', 15);
+    addMoney(1000);
+    log('👑 国王的一天！所有人见到你都行礼，心情+20，体力+15，+1000 元', 'ok');
+    g.kingDay = 0;
   }
   if (g.rel >= 900) unlock('love');
   if (g.vis.drive >= 10) unlock('drive10');
@@ -1951,6 +2163,14 @@ function startScreen() {
       else { log('没有存档，先开始新游戏吧', 'bad'); }
     } }
   ]);
+  if (S().tickets && Object.keys(S().tickets).length > 0) {
+    var names = { massage: '按摩', parking: '免停车', hongbao: '红包', king: '国王' };
+    var keys = Object.keys(S().tickets);
+    var tb = document.createElement('div');
+    tb.className = 'ticketBar';
+    tb.textContent = '🎟️ 奖券图鉴 ' + keys.length + '/4 · ' + keys.map(function(k) { return names[k] || k; }).join('、');
+    $('choices').appendChild(tb);
+  }
 }
 function startNew() {
   window.__S = newGame();
@@ -1976,6 +2196,7 @@ renderSndBtns();
 
 window.__S = loadSave() || newGame();
 startScreen();
+setTheme(S().theme);
 var titleClicks = 0;
 if (canvas && canvas.addEventListener) {
   canvas.addEventListener('click', function(ev) {
@@ -2047,7 +2268,7 @@ window.addEventListener('beforeunload', save);
 </style>
 <script>
 (function() {
-  var HASH = '5a0eb78500417e9f4608beeb8985bb06a72175f13590d0580b202cdb19f299b7';
+  var HASH = '0db1804a6beaabd4686ed1f9a9763427df438dafe97e3a2a761e1db81405f538';
   function sha(s) {
     if (window.crypto && crypto.subtle) {
       return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function(buf) {
@@ -2066,7 +2287,7 @@ window.addEventListener('beforeunload', save);
   function check() {
     var v = document.getElementById('gatePwd').value.trim();
     sha(v).then(function(h) {
-      var good = h ? (h === HASH) : (v === 'suan3366');
+      var good = h ? (h === HASH) : (v === '3366');
       if (good) {
         unlock();
       } else {

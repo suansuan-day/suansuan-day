@@ -74,9 +74,23 @@
   #log .ev { color: #ffd166; font-weight: 600; }
   #log .ok { color: #7ee081; }
   #log .bad { color: #ff8fa3; }
+  #log .big {
+    color: #ffd166; font-weight: 800;
+    animation: bigFlash 1s ease-out;
+  }
+  @keyframes bigFlash {
+    0% { transform: scale(.8); opacity: 0; }
+    30% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); }
+  }
   #choices { display: flex; flex-direction: column; gap: 8px; }
   #choices.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   #choices.grid2 .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .btn.lucky { animation: luckyPulse 1.1s infinite; border-color: #ffd166 !important; }
+  @keyframes luckyPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,209,102,.55); }
+    50% { box-shadow: 0 0 14px 3px rgba(255,209,102,.9); }
+  }
   .btn {
     width: 100%; min-height: 46px;
     background: #3d7dd6; color: #fff; border: 3px solid #5a97e8;
@@ -165,6 +179,7 @@
 var KEY = 'suansuan-day-v1';
 var $ = function(id) { return document.getElementById(id); };
 var canvas = $('scene'), ctx = canvas.getContext('2d');
+var FRAME = 0;
 
 var WEATHER = [
   { id: 'sunny', ico: '☀️', name: '晴' },
@@ -184,41 +199,69 @@ var ACH = [
   { id: 'ktv5',     t: 'K歌之王',    d: '车上K歌 5 次' },
   { id: 'fight1',   t: '小吵怡情',   d: '和柚柚吵一次架' },
   { id: 'ice5',     t: '冰饮好友',   d: '喝到柚柚冰饮 5 次' },
-  { id: 'rich',     t: '攒钱高手',   d: '存款达到 1000 元' },
-  { id: 'love',     t: '心有灵犀',   d: '与柚柚关系达到 90' },
+  { id: 'rich',     t: '攒钱高手',   d: '存款达到 10 万元' },
+  { id: 'love',     t: '心有灵犀',   d: '与柚柚关系达到 900' },
   { id: 'cohabit',  t: '住在一起',   d: '触发结局：柚柚搬来一起住' },
-  { id: 'cohabit10', t: '同居生活',  d: '同居满 10 天' }
+  { id: 'cohabit10', t: '同居生活',  d: '同居满 10 天' },
+  { id: 'godsing',  t: '歌神附体',   d: '在车里唱出那首《泪桥》' },
+  { id: 'swan',     t: '天鹅湖之夜', d: '在车上看着天鹅湖入睡' },
+  { id: 'tsundere', t: '傲娇的一天', d: '经历一次柚柚的傲娇模式' },
+  { id: 'stock',    t: '股海沉浮',   d: '第一次炒股' },
+  { id: 'late',     t: '夜猫子',     d: '熬夜 3 次' },
+  { id: 'grandma',  t: '外婆家',     d: '去外婆家看她一次' }
 ];
 
 var EVENTS = [
-  { t: '早上出门堵车了，心情-5', m: -5, money: 0, car: 0 },
-  { t: '下起小雨，车身溅了点泥，车况-6', m: -2, money: 0, car: -6 },
-  { t: '路边捡到 50 元！', m: 4, money: 50, car: 0 },
-  { t: '柚柚突然送来一杯冰饮，体力+15', e: 15, rel: 2, m: 6 },
+  { t: '早上出门堵车了，心情-5', m: -5 },
+  { t: '下起小雨，车身溅了点泥，车况-6', m: -2, car: -6 },
+  { t: '路边捡到 500 元！', m: 4, money: 500 },
+  { t: '柚柚突然送来一杯冰饮，体力+15', e: 15, rel: 20, m: 6 },
   { t: '读者夸你编的《大三年》好看，心情+8', m: 8 },
   { t: '路边遇到一只小橘猫，心情+6', m: 6 },
-  { t: '油费涨价，-20 元', money: -20, m: -2 },
-  { t: '彩票刮出 100 元！', money: 100, m: 8 },
-  { t: '车胎被钉子扎了，补胎-80 元', money: -80, m: -6 },
+  { t: '油费涨价，-200 元', money: -200, m: -2 },
+  { t: '彩票刮出 1000 元！', money: 1000, m: 8 },
+  { t: '车胎被钉子扎了！今晚得去修车', m: -6, carIssue: 'tire' },
+  { t: '空调坏了，车里闷得慌，得去修', m: -8, carIssue: 'ac' },
   { t: '晚上星空超好看，心情+5', m: 5 }
 ];
 
 var COHABIT_EVENTS = [
   { t: '柚柚做了爱心早餐，体力+10，心情+5', e: 10, m: 5 },
-  { t: '柚柚帮你整理好衣服，心情+4，关系+3', m: 4, rel: 3 },
-  { t: '晚上柚柚弹了一首曲子，心情+6，关系+4', m: 6, rel: 4 },
+  { t: '柚柚帮你整理好衣服，心情+4，关系+30', m: 4, rel: 30 },
+  { t: '晚上柚柚弹了一首曲子，心情+6，关系+40', m: 6, rel: 40 },
   { t: '两人抢遥控器，最后一起看动画片，心情+3', m: 3 }
+];
+
+var WORK_BUFFS = [
+  { name: '锦鲤附体', t: '🐟 锦鲤附体！今天工资翻 1.5 倍！', mult: 1.5 },
+  { name: '效率爆棚', t: '⚡ 效率爆棚！每题多赚 1000 元！', per: 1000 },
+  { name: '客户加急单', t: '📦 接到加急单，下班奖金 +3000 元', bonus: 3000 },
+  { name: '咖啡加持', t: '☕ 咖啡加持，体力 +10', energy: 10 },
+  { name: '摸鱼被抓', t: '🐟 摸鱼被主编抓包，心情 -8', mood: -8 },
+  { name: '稿子被打回', t: '📝 稿子被打回重改，心情 -10', mood: -10 }
+];
+
+var BIG_EVENTS = [
+  { t: '🌊 瓦尔登湖发大水，出版社放假一天！', e: 20, m: 10 },
+  { t: '🎆 瓦尔登湖烟花大会！', e: 5, m: 18, rel: 60 },
+  { t: '🎂 今天是柚柚生日！你偷偷准备了惊喜', e: 10, m: 20, rel: 200 },
+  { t: '🚀 出版社上市敲钟！全员分红', money: 50000, m: 15 },
+  { t: '🦁 路上遇到马戏团巡游，跟着玩了一整天', e: -10, m: 25 },
+  { t: '🌠 流星雨！你许了一个愿', e: 20, m: 20 },
+  { t: '🏆 《大三年》获得年度图书大奖！', money: 20000, m: 20 },
+  { t: '📦 神秘包裹送到家门口，里面是 3 万元', money: 30000, m: 5 }
 ];
 
 var PAL = {
   skin: '#ffd9b3', hair: '#3b2a20', eye: '#1d2430',
   shirt: '#7ec850', pants: '#4a5d8c', shoes: '#5b3a29',
-  yHair: '#8a5a33', dress: '#f49bc1', yShoes: '#e0528a'
+  yHair: '#8a5a33', dress: '#f49bc1', yShoes: '#e0528a',
+  hairL: '#5a4030', yHairL: '#c98a5a'
 };
 
 var SUANSUAN = [
   '....HHHH....',
-  '....HHHH....',
+  '....HhhH....',
   '...HHHHHH...',
   '...HSSSSH...',
   '...HSSSSH...',
@@ -228,16 +271,17 @@ var SUANSUAN = [
   '...HGGGGH...',
   '..HGGGGGGH..',
   '..HGGGGGGH..',
-  '..HGPPPPGH..',
+  '..HGGPPPGG..',
   '...HPPPPH...',
   '...HPPPPH...',
   '..BBB..BBB..',
   '............'
 ];
 var YOYO = [
+  '....H.......',
   'o.........o.',
   'oH.......Ho.',
-  '.HH.....HH..',
+  '.HHh...hHH..',
   '..HSSSSSH...',
   '..HSSSSSH...',
   '.HSSSSSSSH..',
@@ -249,7 +293,24 @@ var YOYO = [
   '.HDDDDDDDH..',
   '..HDDDDDH...',
   '..HS..SHS...',
-  '.BBB..BBB...',
+  '.BBB..BBB...'
+];
+var LIANG = [
+  '....HHHH....',
+  '....HHHH....',
+  '...HHHHHH...',
+  '..HHHHHHHH..',
+  '..HSSSSSSH..',
+  '..HSSSSSSH..',
+  '.HSSSSSSSSH.',
+  '.HSESESESH..',
+  '.HSSSSSSSSH.',
+  '..HWWWWWWH..',
+  '..HWWWWWWH..',
+  '..HWWWWWWH..',
+  '..HWKKKKWH..',
+  '...HKKKKH...',
+  '..BBB..BBB..',
   '............'
 ];
 
@@ -262,22 +323,60 @@ function sprite(map, sx, sy, s, palette) {
     var row = map[r];
     for (var c = 0; c < row.length; c++) {
       var ch = row[c], col = palette[ch];
-      if (col) px(sx + c * s, sy + r * s, s, s, col);
+      if (!col) continue;
+      if (ch === 'E' && (FRAME + sy) % 130 < 6) continue;
+      px(sx + c * s, sy + r * s, s, s, col);
     }
   }
+}
+function mainCharSprite(x, y, s) {
+  var m = S().melancholy ? LIANG : SUANSUAN;
+  sprite(m, x, y, s, {
+    H: PAL.hair, h: PAL.hairL, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes,
+    W: '#f2f2f2', K: '#2a2f38'
+  });
+  if (S().ugly) {
+    px(x + 4 * s, y + 7 * s, 2 * s, s, '#5b3a29');
+    px(x + 7 * s, y + 7 * s, 2 * s, s, '#5b3a29');
+  }
+  if (S().handsome) {
+    var sp = ((FRAME / 12) | 0) % 2 === 0;
+    if (sp) {
+      px(x - 2 * s, y + 2 * s, s, s, '#fff3b0');
+      px(x + 11 * s, y + 4 * s, s, s, '#fff3b0');
+      px(x + 5 * s, y - 2 * s, s, s, '#fff3b0');
+      px(x + 12 * s, y + 10 * s, s, s, '#fff3b0');
+      px(x - 2 * s, y + 11 * s, s, s, '#fff3b0');
+    }
+  }
+}
+function yoyoSprite(x, y, s) {
+  sprite(YOYO, x, y, s, {
+    H: PAL.yHair, h: PAL.yHairL, S: PAL.skin, E: PAL.eye,
+    D: PAL.dress, B: PAL.yShoes
+  });
+}
+function drawHearts(x, y) {
+  px(x, y, 8, 8, '#ff8fa3');
+  px(x - 8, y - 4, 8, 8, '#ff8fa3');
+  px(x + 8, y - 4, 8, 8, '#ff8fa3');
 }
 
 function newGame() {
   return {
     day: 1, money: 100,
     energy: 100, mood: 80, full: 70,
-    carClean: 90, rel: 40,
+    carClean: 90, rel: 400,
     car: 'buick', withYoyo: false,
     ach: {}, vis: { places: {}, foods: {}, ktv: 0, ice: 0, wash: 0, drive: 0 },
     weather: 'sunny', scene: 'title',
     sleptInCar: false, phase: 'title',
     lastEvent: '', fishCount: 0,
-    liveTogether: false, cohabitDays: 0
+    liveTogether: false, cohabitDays: 0,
+    carIssue: null, tsundere: false, melancholy: false,
+    stock: null, lateNights: 0, grandmaSeen: false, swanNight: false,
+    workBuff: null, equip: {}, pets: [], ugly: false, handsome: false
   };
 }
 function S() { return window.__S; }
@@ -404,12 +503,12 @@ var MELODY = [
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function addStat(k, v) {
-  var limits = { energy: 100, mood: 100, full: 100, carClean: 100, rel: 100 };
+  var limits = { energy: 100, mood: 100, full: 100, carClean: 100, rel: 1000 };
   S()[k] = clamp((S()[k] || 0) + v, 0, limits[k] || 999);
 }
 function addMoney(v) {
   S().money = Math.max(0, S().money + v);
-  if (S().money >= 1000) unlock('rich');
+  if (S().money >= 100000) unlock('rich');
 }
 function log(msg, cls) {
   var d = document.createElement('div');
@@ -449,6 +548,26 @@ function rollWeather() {
   S().weather = r < 0.5 ? 'sunny' : (r < 0.8 ? 'cloudy' : 'rain');
 }
 function rollEvent() {
+  var g = S();
+  if (Math.random() < 0.03 && !g.grandmaSeen) {
+    g.grandmaSeen = true;
+    unlock('grandma');
+    addStat('mood', 12); addStat('full', 20); addStat('energy', 10); addMoney(300);
+    SFX.fanfare();
+    log('👵 外婆喊你回家吃饭！红烧肉管够，还塞给你 300 元零花钱', 'ok');
+    return;
+  }
+  if (Math.random() < 0.02) {
+    var prize = Math.random() < 0.5 ? 50000 : 100000;
+    addMoney(prize);
+    SFX.fanfare();
+    log('🎰 你随手买的彩票中了 ' + prize + ' 元！！', 'ok');
+    return;
+  }
+  if (g.pets && g.pets.length && Math.random() < 0.5) {
+    petEvent(g);
+    return;
+  }
   if (Math.random() > 0.38) return;
   var list = (S().liveTogether && Math.random() < 0.5) ? COHABIT_EVENTS : EVENTS;
   var e = list[Math.floor(Math.random() * list.length)];
@@ -457,6 +576,7 @@ function rollEvent() {
   if (e.car) addStat('carClean', e.car);
   if (e.rel) addStat('rel', e.rel);
   if (e.money) addMoney(e.money);
+  if (e.carIssue) g.carIssue = e.carIssue;
   if (e.money > 0) SFX.coin();
   if (e.money < 0) SFX.wrong();
   log('⚡ ' + e.t, e.money < 0 || (e.m && e.m < 0) ? 'bad' : 'ok');
@@ -466,12 +586,25 @@ function choices(list) {
   var box = $('choices');
   box.innerHTML = '';
   box.className = list.length > 3 ? 'grid2' : '';
-  list.forEach(function(item) {
+  var luckyIdx = -1;
+  if (list.length > 1 && Math.random() < 0.18) luckyIdx = Math.floor(Math.random() * list.length);
+  list.forEach(function(item, idx) {
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'btn ' + (item.cls || '');
-    b.textContent = item.text;
-    b.onclick = function() { SFX.click(); item.fn(); };
+    var lucky = idx === luckyIdx;
+    b.className = 'btn ' + (item.cls || '') + (lucky ? ' lucky' : '');
+    b.textContent = (lucky ? '🍀 ' : '') + item.text;
+    b.onclick = function() {
+      SFX.click();
+      if (lucky) {
+        SFX.coin();
+        var r = Math.floor(Math.random() * 3);
+        if (r === 0) { addStat('mood', 8); log('🍀 好运降临！心情+8', 'ok'); }
+        else if (r === 1) { addMoney(300); log('🍀 好运降临！多赚了 300 元', 'ok'); }
+        else { addStat('energy', 10); log('🍀 好运降临！体力+10', 'ok'); }
+      }
+      item.fn();
+    };
     box.appendChild(b);
   });
 }
@@ -487,18 +620,18 @@ function renderTop() {
 }
 function renderStats() {
   var map = [
-    ['energy', '⚡体力', 'b-energy'],
-    ['mood', '😊心情', 'b-mood'],
-    ['full', '🍚饱腹', 'b-full'],
-    ['carClean', '🚿车况', 'b-car'],
-    ['rel', '💕柚柚', 'b-rel'],
-    ['money', '💰存款', 'b-money']
+    ['energy', '⚡体力', 100],
+    ['mood', '😊心情', 100],
+    ['full', '🍚饱腹', 100],
+    ['carClean', '🚿车况', 100],
+    ['rel', '💕柚柚', 1000],
+    ['money', '💰存款', 0]
   ];
   var html = '';
   map.forEach(function(m) {
     var v = S()[m[0]];
-    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span><span>' + Math.round(v) + '</span></div>' +
-      '<div class="bar"><i style="width:' + v + '%"></i></div></div>';
+    var cap = m[2] ? '/' + m[2] : '';
+    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span><span>' + Math.round(v) + cap + '</span></div></div>';
   });
   $('stats').innerHTML = html;
 }
@@ -525,27 +658,31 @@ function drawBg() {
   var sky = w === 'rain' ? '#7b8ba3' : (w === 'cloudy' ? '#a9c6e8' : '#87ceeb');
   px(0, 0, 360, 240, sky);
   if (w !== 'rain') {
-    px(40, 22, 26, 26, '#ffe08a');       // sun
-    px(44, 18, 18, 8, '#ffe08a');
-    px(50, 14, 6, 18, '#ffe08a');
-    px(300, 30, 34, 10, '#ffffff');
-    px(270, 52, 26, 8, '#ffffff');
+    var pulse = Math.sin(FRAME / 30) * 2;
+    px(40, 22 + pulse, 26, 26, '#ffe08a');       // sun
+    px(44, 18 + pulse, 18, 8, '#ffe08a');
+    px(50, 14 + pulse, 6, 18, '#ffe08a');
+    var drift = (FRAME * 0.35) % 70;
+    px(300 - drift, 30, 34, 10, '#ffffff');
+    px(270 - drift, 52, 26, 8, '#ffffff');
+    px(300 - drift + 70, 30, 34, 10, '#ffffff');
+    px(270 - drift + 70, 52, 26, 8, '#ffffff');
   } else {
-    px(50, 30, 3, 12, '#a8c8e8'); px(70, 46, 3, 10, '#a8c8e8');
-    px(280, 26, 3, 12, '#a8c8e8'); px(310, 60, 3, 10, '#a8c8e8');
+    for (var i = 0; i < 12; i++) {
+      var rx = (i * 53 + 20) % 355;
+      var ry = ((FRAME * 3 + i * 73) % 165) - 15;
+      px(rx, ry, 3, 12, '#a8c8e8');
+    }
   }
 }
 function drawTitle() {
   px(0, 160, 360, 80, '#8ecf6a');
   px(0, 178, 360, 4, '#6db04f');
-  sprite(SUANSUAN, 110, 78, 4, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
-  sprite(YOYO, 210, 78, 4, {
-    H: PAL.yHair, S: PAL.skin, E: PAL.eye,
-    D: PAL.dress, B: PAL.yShoes
-  });
+  mainCharSprite(110, 78, 4);
+  yoyoSprite(210, 78, 4);
+  if ((FRAME + 20) % 70 < 14) px(40, 90, 5, 5, '#fff3b0');
+  if ((FRAME + 50) % 90 < 16) px(310, 100, 4, 4, '#fff3b0');
+  if (FRAME % 100 < 20) px(90, 20, 4, 4, '#fff3b0');
   ctx.fillStyle = '#3d2b1a';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
@@ -568,15 +705,10 @@ function drawHome() {
   px(178, 82, 8, 10, '#5b3a29');
   px(172, 92, 16, 12, '#e8a3a3');
   px(150, 104, 60, 26, '#c98a4b');
-  sprite(SUANSUAN, 258, 96, 3, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
+  mainCharSprite(258, 96, 3);
   if (S().liveTogether) {
-    sprite(YOYO, 294, 96, 3, {
-      H: PAL.yHair, S: PAL.skin, E: PAL.eye,
-      D: PAL.dress, B: PAL.yShoes
-    });
+    yoyoSprite(294, 96, 3);
+    if (FRAME % 150 < 50) drawHearts(300, 80 - ((FRAME % 150) / 150) * 22);
   }
 }
 function drawOffice() {
@@ -593,10 +725,7 @@ function drawOffice() {
   px(64, 148, 62, 4, '#a06c46');
   px(150, 150, 40, 40, '#6f7d95');
   px(152, 152, 36, 20, '#33415c');
-  sprite(SUANSUAN, 208, 116, 4, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
+  mainCharSprite(208, 116, 4);
   px(240, 120, 90, 30, '#c9b28a');
   px(246, 116, 16, 4, '#6e4c30');
 }
@@ -611,10 +740,7 @@ function drawPark() {
   px(120, 200, 30, 20, '#f0a9c8');
   px(125, 194, 20, 8, '#e88fb0');
   px(240, 210, 40, 14, '#6db0d8');
-  sprite(SUANSUAN, 80, 150, 4, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
+  mainCharSprite(80, 150, 4);
 }
 function drawMountain() {
   px(0, 120, 360, 120, '#8ecf6a');
@@ -628,10 +754,7 @@ function drawMountain() {
   px(196, 186, 22, 12, '#e8a3a3');
   px(150, 196, 70, 18, '#d8c9a8');
   px(140, 170, 26, 16, '#a06c46');
-  sprite(SUANSUAN, 190, 158, 4, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
+  mainCharSprite(190, 158, 4);
 }
 function drawLake() {
   px(0, 110, 360, 130, '#6db0d8');
@@ -642,10 +765,15 @@ function drawLake() {
   px(0, 170, 360, 70, '#8ecf6a');
   px(20, 150, 22, 22, '#5f9e4f');
   px(340, 160, 20, 18, '#5f9e4f');
-  sprite(SUANSUAN, 290, 168, 4, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
+  if ((FRAME % 260) < 34) {
+    var fp = (FRAME % 260) / 34;
+    var fx = 50 + fp * 90;
+    var fy = 105 - Math.sin(fp * Math.PI) * 26;
+    px(fx, fy, 18, 8, '#4f9fd8');
+    px(fx + 18, fy + 2, 7, 4, '#7ec8ee');
+    px(fx - 6, fy + 7, 30, 4, '#c8e8f8');
+  }
+  mainCharSprite(290, 168, 4);
   px(260, 172, 34, 3, '#8a6242');
   px(292, 174, 3, 18, '#8a6242');
 }
@@ -657,15 +785,10 @@ function drawCarInside() {
   px(200, 86, 120, 12, '#b8c4d4');
   px(70, 108, 90, 60, '#5b6c84');
   px(205, 108, 90, 60, '#5b6c84');
-  sprite(SUANSUAN, 82, 84, 4, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
+  mainCharSprite(82, 84, 4);
   if (S().withYoyo) {
-    sprite(YOYO, 218, 84, 4, {
-      H: PAL.yHair, S: PAL.skin, E: PAL.eye,
-      D: PAL.dress, B: PAL.yShoes
-    });
+    yoyoSprite(218, 84, 4);
+    if (FRAME % 150 < 55) drawHearts(222, 66 - ((FRAME % 150) / 150) * 20);
   }
   px(40, 176, 120, 14, '#2e3a4d');
   px(205, 176, 120, 14, '#2e3a4d');
@@ -724,17 +847,20 @@ function drawSleep() {
   px(80, 100, 200, 70, '#3d4a5e');
   px(80, 100, 200, 14, '#53627a');
   px(90, 130, 180, 26, '#e8ecf2');
-  sprite(SUANSUAN, 170, 96, 3, {
-    H: PAL.hair, S: PAL.skin, E: PAL.eye,
-    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
-  });
-  px(250, 80, 16, 16, '#ffd166');
-  px(60, 60, 10, 10, '#ffd166');
+  mainCharSprite(170, 96, 3);
+  var tw = ((FRAME / 28) | 0) % 2 === 0 ? '#ffd166' : '#fff3b0';
+  px(250, 80, 16, 16, tw);
+  px(60, 60, 10, 10, tw);
 }
 function drawRoad() {
   px(0, 140, 360, 100, '#5a6675');
   px(0, 140, 360, 6, '#44505f');
-  for (var i = 0; i < 9; i++) px(i * 44 + 8, 190, 18, 4, '#e8d06a');
+  var off = (FRAME * 2) % 22;
+  for (var i = 0; i < 9; i++) {
+    var dx = i * 44 + 8 + off;
+    if (dx > 356) dx -= 44;
+    px(dx, 190, 18, 4, '#e8d06a');
+  }
   if (S().car === 'bao5') {
     px(80, 92, 200, 48, '#a8d68a');
     px(104, 74, 40, 22, '#bfe8a4');
@@ -767,30 +893,35 @@ function showChoicesOf(phase) {
       break;
     case 'lunch':
       choices([
-        { text: '🍢 川川烧烤（30元）', cls: 'orange', fn: function() { eat('bbq'); } },
-        { text: '🍗 鸭腿饭（18元）', cls: 'green', fn: function() { eat('duck'); } },
-        { text: '🍲 瓦尔登湖草本汤（22元）', cls: 'blue', fn: function() { eat('soup'); } },
+        { text: '🍢 川川烧烤（300元）', cls: 'orange', fn: function() { eat('bbq'); } },
+        { text: '🍗 鸭腿饭（180元）', cls: 'green', fn: function() { eat('duck'); } },
+        { text: '🍲 瓦尔登湖草本汤（220元）', cls: 'blue', fn: function() { eat('soup'); } },
         { text: '🏠 家里做', cls: 'gray', fn: function() { eat('home'); } },
         { text: '🍳 去柚柚家做饭', cls: 'pink', fn: function() { eat('yoyo'); } }
       ]);
       break;
     case 'drive':
-      choices([
+      var driveActs = [
         { text: '🎤 自己K歌', cls: 'green', fn: function() { carAct('selfktv'); } },
         { text: '🎶 柚柚K歌', cls: 'pink', fn: function() { carAct('yoyoktv'); } },
         { text: '😶 发呆', cls: 'gray', fn: function() { carAct('zone'); } },
         { text: '😤 吵架', cls: 'orange', fn: function() { carAct('fight'); } }
-      ]);
+      ];
+      if (g.withYoyo && g.equip && g.equip.guitar) {
+        driveActs.splice(1, 0, { text: '🎸 柚柚弹吉他', cls: 'pink', fn: function() { carAct('guitar'); } });
+      }
+      choices(driveActs);
       break;
     case 'carSleep':
       choices([
         { text: '😴 睡在豹5上（不回瓦尔登湖的家）', cls: 'green', fn: function() { sleepInCar(); } },
+        { text: '🦢 去天鹅湖住一晚', cls: 'blue', fn: function() { swanNight(); } },
         { text: '🚗 开回瓦尔登湖的家', cls: 'gray', fn: function() { goHomeNight(); } }
       ]);
       break;
     case 'wash':
       choices([
-        { text: '🚿 洗车（30元）', cls: 'blue', fn: function() { washCar(); } },
+        { text: '🚿 洗车（300元）', cls: 'blue', fn: function() { washCar(); } },
         { text: '🙅 不洗了', cls: 'gray', fn: function() { afterWash(); } }
       ]);
       break;
@@ -799,11 +930,22 @@ function showChoicesOf(phase) {
         { text: '🛌 睡觉，迎接明天', cls: 'green', fn: function() { sleep(); } },
         { text: '🏆 看看成就', cls: 'gray', fn: showAch }
       ];
+      nightChoices.push({ text: '🌙 熬夜', cls: 'orange', fn: stayUpLate });
+      nightChoices.push({ text: '🛒 逛商城', cls: 'blue', fn: shopMenu });
+      if (g.carIssue) {
+        nightChoices.push({ text: '🔧 去修车（' + (g.carIssue === 'tire' ? 800 : 600) + '元）', cls: 'orange', fn: repairCar });
+      }
       if (g.liveTogether) {
         nightChoices.push({ text: '💕 和柚柚过夜生活', cls: 'pink', fn: cohabitMenu });
       }
-      if (g.car === 'buick' && g.money >= 2000) {
-        nightChoices.push({ text: '🚙 买豹5浅绿色（2000元）', cls: 'orange', fn: buyBao5 });
+      if (g.tsundere) {
+        nightChoices.push({ text: '😤 哄哄傲娇的柚柚', cls: 'pink', fn: function() { calmTsundere(); } });
+      }
+      if (g.car === 'buick' && g.money >= 300000) {
+        nightChoices.push({ text: '🚙 买豹5浅绿色（30万元）', cls: 'orange', fn: buyBao5 });
+      }
+      if (g.car === 'bao5' && !g.stock) {
+        nightChoices.push({ text: '📈 炒股票', cls: 'blue', fn: stockMenu });
       }
       choices(nightChoices);
       break;
@@ -826,8 +968,8 @@ function morningChoicesUI() {
     if (!g.withYoyo) {
       arr.push({ text: '👩 叫上柚柚一起', cls: 'orange', fn: function() {
         g.withYoyo = true;
-        addStat('rel', 2);
-        log('你打电话给柚柚，她开心地上了车，关系 +2', 'ok');
+      addStat('rel', 20);
+      log('你打电话给柚柚，她开心地上了车，关系 +20', 'ok');
         setScene('car');
         morningChoicesUI();
       } });
@@ -846,22 +988,35 @@ function startWork() {
   var g = S();
   g.phase = 'work';
   g.vis.drive++;
+  g.workBuff = null;
   setScene('office');
   log('你开车来到川川出版社，开始一天的工作。', '');
   if (g.withYoyo) log('柚柚帮你整理稿件，出版社气氛都甜了～', 'ok');
-  log('先把这几道口算题做完吧！答对一题多赚 12 元。', '');
+  if (Math.random() < 0.55) {
+    var b = WORK_BUFFS[Math.floor(Math.random() * WORK_BUFFS.length)];
+    g.workBuff = b;
+    log(b.t, b.mood < 0 ? 'bad' : 'ok');
+    if (b.mood) addStat('mood', b.mood);
+    if (b.energy) addStat('energy', b.energy);
+  }
+  log('先把这几道口算题做完吧！答对一题多赚 1200 元。', '');
   workQ(0, 0);
 }
 function workQ(n, score) {
   if (n >= 5) {
     var g = S();
-    var earn = 100 + score * 12;
+    $('workQ').classList.add('hidden');
+    $('workInput').classList.add('hidden');
+    var mult = (g.workBuff && g.workBuff.mult) ? g.workBuff.mult : 1;
+    var per = (g.workBuff && g.workBuff.per) ? g.workBuff.per : 1200;
+    var bonus = (g.workBuff && g.workBuff.bonus) ? g.workBuff.bonus : 0;
+    var earn = Math.round((12000 + score * per) * mult) + bonus;
     addMoney(earn);
     addStat('energy', -12);
     addStat('mood', g.withYoyo ? 0 : -4);
-    if (g.withYoyo) addStat('rel', 3);
+    if (g.withYoyo) addStat('rel', 30);
     SFX.coin();
-    log('下班啦！工资 +' + earn + ' 元（含奖励 ' + (score * 12) + ' 元）', 'ok');
+    log('下班啦！工资 +' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
     unlock('work1');
     if (g.withYoyo) log('柚柚说：明天还要来帮你！', 'ok');
     afterWork();
@@ -912,13 +1067,31 @@ function parkWalk() {
   var g = S();
   g.phase = 'lunch';
   rememberPlace('park');
-  addStat('mood', 12);
   addStat('energy', -8);
   setScene('park');
-  log('在公园里慢慢走，风吹过来，心情 +12', 'ok');
+  if (g.withYoyo) {
+    log('你和柚柚在公园散步，走着走着开始猜拳！', '');
+    rpsGame(3, function(wins) {
+      if (wins >= 2) {
+        addStat('rel', 80); addStat('mood', 10);
+        log('你猜拳赢了！柚柚笑着追你，关系+80，心情+10', 'ok');
+      } else {
+        addStat('rel', 40); addStat('mood', 5);
+        log('你猜拳输给柚柚，她得意地晃脑袋，关系+40，心情+5', '');
+      }
+      afterPark();
+    });
+  } else {
+    log('在公园里慢慢走，风吹过来，心情 +12', 'ok');
+    addStat('mood', 12);
+    afterPark();
+  }
+}
+function afterPark() {
+  var g = S();
   if (Math.random() < 0.45) {
-    addStat('rel', 8);
-    log('偶遇柚柚！她陪你走了一圈，关系 +8', 'ok');
+    addStat('rel', 80);
+    log('偶遇柚柚！她陪你走了一圈，关系 +80', 'ok');
     g.withYoyo = true;
   }
   unlock('play1');
@@ -929,20 +1102,33 @@ function mountainPicnic() {
   var g = S();
   g.phase = 'lunch';
   rememberPlace('mountain');
-  if (g.money < 20) {
+  setScene('mountain');
+  if (g.money < 200) {
     log('钱不够买野餐垫和零食，只好在草地坐坐，心情 +6', 'ok');
     addStat('mood', 6);
     addStat('energy', -10);
+    afterPicnic();
   } else {
-    addMoney(-20);
-    addStat('mood', 15);
-    addStat('energy', -12);
-    log('在山上铺开野餐垫，吃了零食，花了 20 元，心情 +15', 'ok');
-    if (g.withYoyo) { addStat('rel', 5); log('柚柚坐在垫子上，关系 +5', 'ok'); }
-    unlock('picnic');
+    addMoney(-200);
+    addStat('energy', -8);
+    log('铺好野餐垫，零食刚摆上，蚂蚁就来了！', '');
+    antGame(function(got) {
+      var g2 = S();
+      if (got >= 2) {
+        addStat('mood', 18);
+        log('你手疾眼快拍掉 ' + got + ' 只蚂蚁！野餐圆满，心情+18', 'ok');
+      } else {
+        addStat('mood', 8);
+        log('蚂蚁偷走了 ' + (3 - got) + ' 块饼干，野餐有点狼狈，心情+8', '');
+      }
+      if (g2.withYoyo) { addStat('rel', 40); log('柚柚在旁边笑你手忙脚乱，关系+40', 'ok'); }
+      unlock('picnic');
+      afterPicnic();
+    });
   }
+}
+function afterPicnic() {
   unlock('play1');
-  setScene('mountain');
   logTitle('野餐结束，下山吃饭去，吃什么？');
   showChoicesOf('lunch');
 }
@@ -978,7 +1164,7 @@ function startFishing() {
     var inZone = pos >= 28 && pos <= 54;
     if (inZone) {
       var size = Math.random();
-      var price = size < 0.5 ? 20 : (size < 0.8 ? 35 : 60);
+      var price = size < 0.5 ? 200 : (size < 0.8 ? 350 : 600);
       addMoney(price);
       g.fishCount++;
       addStat('mood', 10);
@@ -1008,23 +1194,23 @@ function eat(kind) {
   setScene('home');
   switch (kind) {
     case 'bbq':
-      addMoney(-30);
+      addMoney(-300);
       addStat('full', 38);
       addStat('mood', 12);
-      log('川川烧烤香喷喷！饱腹 +38，心情 +12（-30元）', 'ok');
+      log('川川烧烤香喷喷！饱腹 +38，心情 +12（-300元）', 'ok');
       break;
     case 'duck':
-      addMoney(-18);
+      addMoney(-180);
       addStat('full', 30);
       addStat('mood', 6);
-      log('鸭腿饭管饱又实惠！饱腹 +30（-18元）', 'ok');
+      log('鸭腿饭管饱又实惠！饱腹 +30（-180元）', 'ok');
       break;
     case 'soup':
-      addMoney(-22);
+      addMoney(-220);
       addStat('full', 24);
       addStat('energy', 12);
       addStat('mood', 7);
-      log('一碗热乎乎的瓦尔登湖草本汤，身体都暖了（-22元）', 'ok');
+      log('一碗热乎乎的瓦尔登湖草本汤，身体都暖了（-220元）', 'ok');
       break;
     case 'home':
       addStat('full', 18);
@@ -1032,15 +1218,28 @@ function eat(kind) {
       log('在家随便煮了点吃的，饱腹 +18', '');
       break;
     case 'yoyo':
-      addStat('full', 28);
-      addStat('rel', 10);
-      addStat('mood', 10);
-      log('去柚柚家做饭！她做了冰饮料，体力 +15，关系 +10', 'ok');
-      addStat('energy', 15);
-      g.vis.ice++;
-      if (g.vis.ice >= 5) unlock('ice5');
-      g.withYoyo = true;
-      break;
+      log('来到柚柚家！她系上围裙：今天你掌勺，我监工～', '');
+      cookGame(function(ok) {
+        var g2 = S();
+        addStat('full', 15 + ok * 5);
+        addStat('rel', 40 + ok * 20);
+        addStat('mood', 5 + ok * 3);
+        addStat('energy', 15);
+        if (ok >= 3) {
+          SFX.fanfare();
+          log('你和柚柚做出了一桌好菜！饱腹+' + (15 + ok * 5) + '，关系+' + (40 + ok * 20) + '，体力+15', 'ok');
+        } else {
+          log('饭做出来了，虽然有点糊……饱腹+' + (15 + ok * 5) + '，关系+' + (40 + ok * 20) + '，体力+15', '');
+        }
+        log('柚柚还做了冰饮料，清爽！', 'ok');
+        g2.vis.ice++;
+        if (g2.vis.ice >= 5) unlock('ice5');
+        g2.withYoyo = true;
+        logTitle('吃饱了，开车回瓦尔登湖的家（也可以做点别的）');
+        setScene('car');
+        showChoicesOf('drive');
+      });
+      return;
   }
   logTitle('吃饱了，开车回瓦尔登湖的家（也可以做点别的）');
   setScene('car');
@@ -1052,21 +1251,40 @@ function carAct(act) {
   var base = '你坐在' + (g.car === 'bao5' ? '豹5' : '小别克') + '里';
   switch (act) {
     case 'selfktv':
-      addStat('mood', 8);
+      var micBonus = (g.equip && g.equip.mic) ? 5 : 0;
+      addStat('mood', 8 + micBonus);
       addStat('energy', -4);
       g.vis.ktv++;
       SFX.ktv();
-      log(base + '，自己举着麦克风飙高音！心情 +8', 'ok');
-      if (g.withYoyo) { addStat('mood', 4); log('柚柚在旁边给你鼓掌，关系 +3', 'ok'); addStat('rel', 3); }
+      log(base + '，自己举着麦克风飙高音！心情 +' + (8 + micBonus), 'ok');
+      if (g.withYoyo) { addStat('mood', 4); log('柚柚在旁边给你鼓掌，关系 +30', 'ok'); addStat('rel', 30); }
+      if (Math.random() < 0.3) {
+        g.handsome = true;
+        addStat('mood', 5);
+        if (g.withYoyo) addStat('rel', 30);
+        log('✨ 你刚才唱歌的样子帅到发光！' + (g.withYoyo ? '柚柚看呆了，关系+30' : '心情+5'), 'ok');
+      }
+      if (Math.random() < (g.melancholy ? 0.5 : 0.15)) {
+        SFX.fanfare();
+        addStat('mood', 15);
+        if (g.withYoyo) addStat('rel', 100);
+        g.handsome = true;
+        log('🎤 歌神附体！一首《泪桥》唱得全车安静，心情+15' + (g.withYoyo ? '，关系+100' : ''), 'ok');
+        unlock('godsing');
+      }
       if (g.vis.ktv >= 5) unlock('ktv5');
       break;
     case 'yoyoktv':
       if (g.withYoyo) {
         addStat('mood', 10);
-        addStat('rel', 5);
+        addStat('rel', 50);
+        if (g.equip && g.equip.guitar) {
+          addStat('rel', 30);
+          log('🎸 柚柚拿起木吉他边弹边唱，关系+30', 'ok');
+        }
         g.vis.ktv++;
         SFX.ktv();
-        log('柚柚唱了一首甜甜的歌，你边开车边笑，关系 +5', 'ok');
+        log('柚柚唱了一首甜甜的歌，你边开车边笑，关系 +50', 'ok');
         if (g.vis.ktv >= 5) unlock('ktv5');
       } else {
         addStat('mood', 3);
@@ -1080,26 +1298,49 @@ function carAct(act) {
     case 'fight':
       SFX.wrong();
       if (g.withYoyo) {
-        addStat('rel', -12);
-        addStat('mood', -6);
-        log('因为空调温度吵起来了！关系 -12，心情 -6', 'bad');
-        unlock('fight1');
-        if (Math.random() < 0.4) {
-          addStat('rel', 8);
-          addStat('mood', 4);
-          log('到了家楼下，柚柚把冰饮料塞给你，算是和好啦，关系 +8', 'ok');
-        }
+        log('因为空调温度吵起来了！猜拳定胜负，谁输谁先低头！', 'bad');
+        rpsGame(3, function(wins) {
+          var g2 = S();
+          if (wins >= 2) {
+            addStat('rel', -40);
+            addStat('mood', -4);
+            log('你赢了猜拳，柚柚气鼓鼓地别过头，关系-40', 'bad');
+          } else {
+            addStat('rel', -90);
+            addStat('mood', -8);
+            log('你输了猜拳，只好先低头道歉，关系-90', 'bad');
+            if (Math.random() < 0.4) {
+              addStat('rel', 60);
+              addStat('mood', 4);
+              log('到了家楼下，柚柚把冰饮料塞给你，算是和好啦，关系+60', 'ok');
+            }
+          }
+          unlock('fight1');
+          carAfterAct();
+        });
       } else {
         addStat('mood', -2);
         log('一个人对着方向盘生闷气，心情 -2', 'bad');
+        carAfterAct();
       }
       break;
+    case 'guitar':
+      addStat('mood', 10);
+      addStat('rel', 50);
+      SFX.ktv();
+      log('柚柚抱着吉他弹了一首温柔的曲子，关系+50，心情+10', 'ok');
+      carAfterAct();
+      break;
   }
-  S().phase = 'carEnd';
+  if (act !== 'fight' && act !== 'guitar') carAfterAct();
+}
+function carAfterAct() {
+  var g = S();
+  g.phase = 'carEnd';
   setScene('carout');
   if (g.car === 'bao5') {
     logTitle('天快黑了。豹5可以当床睡哦');
-    S().phase = 'carSleep';
+    g.phase = 'carSleep';
     showChoicesOf('carSleep');
   } else {
     goHomeNight();
@@ -1111,9 +1352,9 @@ function sleepInCar() {
   addStat('carClean', -5);
   addStat('energy', 25);
   addStat('mood', 10);
-  addMoney(20);
+  addMoney(200);
   SFX.chime();
-  log('把豹5后排放倒，躺在车里看星星，省了回家的油钱 20 元', 'ok');
+  log('把豹5后排放倒，躺在车里看星星，省了回家的油钱 200 元', 'ok');
   log('第二天起来精神特别好！体力 +25，心情 +10', 'ok');
   unlock('sleepcar');
   afterWashFlow();
@@ -1136,18 +1377,18 @@ function afterWashFlow() {
 }
 function washCar() {
   var g = S();
-  if (g.money < 30) {
-    log('钱不够洗车（30元），只好自己擦擦，车况 +10', '');
+  if (g.money < 300) {
+    log('钱不够洗车（300元），只好自己擦擦，车况 +10', '');
     addStat('carClean', 10);
     afterWash();
     return;
   }
-  addMoney(-30);
+  addMoney(-300);
   addStat('carClean', 100);
   addStat('mood', 3);
   g.vis.wash++;
   if (g.vis.wash >= 3) unlock('wash3');
-  log('洗车店把车洗得锃亮！车况满格（-30元）', 'ok');
+  log('洗车店把车洗得锃亮！车况满格（-300元）', 'ok');
   setScene('wash');
   afterWash();
 }
@@ -1175,17 +1416,17 @@ function cohabitAct(kind) {
   var g = S();
   switch (kind) {
     case 'cook':
-      addStat('full', 20); addStat('rel', 5); addStat('mood', 6);
+      addStat('full', 20); addStat('rel', 50); addStat('mood', 6);
       SFX.pop();
       log('和柚柚一起煮了碗面，她偷偷多给你加了个蛋', 'ok');
       break;
     case 'tv':
-      addStat('mood', 10); addStat('rel', 6);
+      addStat('mood', 10); addStat('rel', 60);
       SFX.ktv();
       log('两人窝在沙发上看剧，她靠在你肩膀上睡着了', 'ok');
       break;
     case 'star':
-      addStat('mood', 8); addStat('rel', 7);
+      addStat('mood', 8); addStat('rel', 70);
       SFX.chime();
       log('阳台上看星星，柚柚数着星座，声音越来越小', 'ok');
       break;
@@ -1195,15 +1436,296 @@ function cohabitAct(kind) {
 function showCohabitCard() {
   var box = document.createElement('div');
   box.className = 'modal';
-  box.innerHTML = '<div class="box"><h2>💕 新结局：住在一起</h2><p>关系达到 90，柚柚搬来和你一起住啦！</p><p>解锁同居玩法：一起做夜宵、窝沙发看剧、阳台看星星，每天早上还有爱心早餐。</p><button type="button" class="btn pink" id="cohClose">太好了！</button></div>';
+  box.innerHTML = '<div class="box"><h2>💕 新结局：住在一起</h2><p>关系达到 900，柚柚搬来和你一起住啦！</p><p>解锁同居玩法：一起做夜宵、窝沙发看剧、阳台看星星，每天早上还有爱心早餐。</p><button type="button" class="btn pink" id="cohClose">太好了！</button></div>';
   document.body.appendChild(box);
   box.querySelector('#cohClose').onclick = function() { SFX.click(); box.remove(); };
 }
 
+/* ===== 新玩法：熬夜 / 修车 / 天鹅湖 / 股票 / 傲娇 ===== */
+function stayUpLate() {
+  var g = S();
+  var r = Math.floor(Math.random() * 3);
+  if (r === 0) { addStat('mood', 8); addStat('energy', -18); log('熬夜看剧到凌晨，剧情太好看，心情+8', ''); }
+  else if (r === 1) { addStat('mood', 10); addStat('energy', -24); log('熬夜打游戏，爽是爽，明天要困了', ''); }
+  else { addMoney(800); addStat('energy', -30); log('熬夜偷偷接了个校对私活，赚了 800 元', 'ok'); }
+  if (Math.random() < 0.3) {
+    g.ugly = true;
+    addStat('mood', -5);
+    log('😵 熬夜太狠，黑眼圈都出来了……明天可能要变丑！', 'bad');
+  }
+  g.lateNights++;
+  if (g.lateNights >= 3) unlock('late');
+  sleep();
+}
+function repairCar() {
+  var g = S();
+  var cost = g.carIssue === 'tire' ? 800 : 600;
+  if (g.money < cost) { log('钱不够修车（' + cost + '元）', 'bad'); showNight(); return; }
+  addMoney(-cost);
+  var part = g.carIssue === 'tire' ? '换好新轮胎' : '修好空调';
+  log('🔧 修车师傅帮你' + part + '（-' + cost + '元）', 'ok');
+  g.carIssue = null;
+  addStat('mood', 5);
+  showNight();
+}
+function swanNight() {
+  var g = S();
+  g.sleptInCar = true;
+  g.swanNight = true;
+  addStat('carClean', -6);
+  addStat('energy', 30);
+  addStat('mood', 15);
+  log('🦢 把车停在天鹅湖边，湖面波光粼粼，你枕着星光睡着了', 'ok');
+  log('第二天精神满满！体力+30，心情+15', 'ok');
+  unlock('swan');
+  afterWashFlow();
+}
+function stockMenu() {
+  choices([
+    { text: '📈 白酒股（投 2000）', cls: 'blue', fn: function() { investStock('白酒股', 2000); } },
+    { text: '🔋 新能源股（投 5000）', cls: 'green', fn: function() { investStock('新能源股', 5000); } },
+    { text: '💻 半导体股（投 10000）', cls: 'orange', fn: function() { investStock('半导体股', 10000); } },
+    { text: '↩️ 不买了', cls: 'gray', fn: showNight }
+  ]);
+}
+function investStock(name, amount) {
+  var g = S();
+  if (g.money < amount) { log('存款不够 ' + amount + ' 元', 'bad'); stockMenu(); return; }
+  addMoney(-amount);
+  g.stock = { name: name, amount: amount };
+  unlock('stock');
+  log('你买了 ' + amount + ' 元的' + name + '，明天看看行情', 'ok');
+  showNight();
+}
+function resolveStock() {
+  var g = S();
+  if (!g.stock) return;
+  var pct = Math.round(Math.random() * 70 - 30);
+  var diff = Math.round(g.stock.amount * pct / 100);
+  addMoney(g.stock.amount + diff);
+  log('📊 ' + g.stock.name + (pct >= 0 ? '涨了' : '跌了') + ' ' + Math.abs(pct) + '%，' + (pct >= 0 ? '赚了' : '亏了') + ' ' + Math.abs(diff) + ' 元', pct >= 0 ? 'ok' : 'bad');
+  if (pct >= 0) SFX.coin(); else SFX.wrong();
+  g.stock = null;
+}
+function calmTsundere() {
+  var g = S();
+  logTitle('柚柚双手抱胸：哼，谁要你哄！');
+  rpsGame(1, function(wins) {
+    if (wins >= 1) {
+      g.tsundere = false;
+      addStat('rel', 60);
+      addStat('mood', 10);
+      log('你赢了猜拳，柚柚噗嗤一笑："算你厉害啦！" 傲娇解除，关系+60', 'ok');
+      SFX.fanfare();
+    } else {
+      addStat('rel', -30);
+      log('你输了猜拳，柚柚哼得更大声了……关系-30（明天再哄吧）', 'bad');
+    }
+    showNight();
+  });
+}
+
+/* ===== 柚柚随机 buff 与模式 ===== */
+function yoyoBuff() {
+  var g = S();
+  if (!g.withYoyo) return;
+  if (Math.random() > 0.35) return;
+  if (g.tsundere) {
+    addStat('mood', -8);
+    log('💢 柚柚傲娇地别过头："才没有关心你呢！" 心情-8', 'bad');
+    return;
+  }
+  var r = Math.floor(Math.random() * 5);
+  if (r === 0) { addStat('rel', 30); addStat('mood', 8); log('💕 柚柚偷偷冒爱心，关系+30', 'ok'); }
+  else if (r === 1) { addStat('energy', 15); log('🧊 柚柚塞给你一杯冰饮，体力+15', 'ok'); }
+  else if (r === 2) { addMoney(300); log('🛍️ 柚柚帮你还价，省了 300 元', 'ok'); SFX.coin(); }
+  else if (r === 3) { addStat('mood', 10); log('💆 柚柚给你捏了捏肩膀，心情+10', 'ok'); }
+  else { addStat('rel', 10); addStat('mood', -3); log('柚柚念叨你乱花钱，关系+10，心情-3', ''); }
+}
+function modeRolls() {
+  var g = S();
+  if (g.withYoyo && !g.tsundere && Math.random() < 0.22) {
+    g.tsundere = true;
+    unlock('tsundere');
+    log('😤 柚柚进入傲娇模式：今天谁也别想靠近我！', 'bad');
+  } else if (g.tsundere && Math.random() < 0.3) {
+    g.tsundere = false;
+    log('柚柚傲娇了一天，终于和好如初', 'ok');
+  }
+  if (!g.melancholy && Math.random() < 0.12) {
+    g.melancholy = true;
+    log('🌧️ 今天的酸酸，眼神忧郁得像梁朝伟……', '');
+  } else if (g.melancholy && Math.random() < 0.4) {
+    g.melancholy = false;
+    log('酸酸从忧郁里走了出来，又开始贫嘴了', 'ok');
+  }
+}
+
+/* ===== 商城 / 装备 / 宠物 ===== */
+function shopMenu() {
+  choices([
+    { text: '📱 新款手机（5万）', cls: 'blue', fn: function() { buyEquip('phone'); } },
+    { text: '🎸 木吉他（2万）', cls: 'orange', fn: function() { buyEquip('guitar'); } },
+    { text: '🎤 麦克风套装（1万）', cls: 'green', fn: function() { buyEquip('mic'); } },
+    { text: '🏠 瓦尔登湖大平层（50万）', cls: 'blue', fn: function() { buyEquip('house'); } },
+    { text: '🐱 领养一只猫（1000元）', cls: 'orange', fn: function() { adoptPet('cat'); } },
+    { text: '🐶 领养一只狗（1500元）', cls: 'orange', fn: function() { adoptPet('dog'); } },
+    { text: '↩️ 返回', cls: 'gray', fn: showNight }
+  ]);
+}
+function buyEquip(kind) {
+  var g = S();
+  var items = {
+    phone: { price: 50000, name: '新款手机', log: '📱 换了新手机！以后每天心情+3' },
+    guitar: { price: 20000, name: '木吉他', log: '🎸 买了木吉他！柚柚以后可以在车上弹给你听' },
+    mic: { price: 10000, name: '麦克风套装', log: '🎤 K歌装备升级！K歌心情加成' },
+    house: { price: 500000, name: '瓦尔登湖大平层', log: '🏠 搬进大平层！每天体力+5，心情+5' }
+  };
+  var it = items[kind];
+  if (!g.equip) g.equip = {};
+  if (g.equip[kind]) { log('已经拥有' + it.name + '啦', 'bad'); shopMenu(); return; }
+  if (g.money < it.price) { log('钱不够，还差 ' + (it.price - g.money) + ' 元', 'bad'); shopMenu(); return; }
+  addMoney(-it.price);
+  g.equip[kind] = true;
+  SFX.coin();
+  log(it.log, 'ok');
+  shopMenu();
+}
+function adoptPet(type) {
+  var g = S();
+  var price = type === 'cat' ? 1000 : 1500;
+  if (g.money < price) { log('钱不够领养', 'bad'); shopMenu(); return; }
+  addMoney(-price);
+  var pet = { type: type, name: type === 'cat' ? '年糕' : '豆豆' };
+  g.pets.push(pet);
+  log((type === 'cat' ? '🐱' : '🐶') + ' 你领养了一只' + (type === 'cat' ? '猫' : '狗') + '！给它取个名字吧', 'ok');
+  petNameModal(pet);
+}
+function petNameModal(pet) {
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>' + (pet.type === 'cat' ? '🐱' : '🐶') + ' 取名字</h2><p>给小家伙起个名字吧</p><input id="petName" style="width:100%;min-height:42px;font-size:16px;text-align:center;background:#1d2430;color:#ffd166;border:3px solid #48566b;border-radius:10px;box-sizing:border-box;" maxlength="8" placeholder="默认：' + pet.name + '"><br><br><button type="button" class="btn green" id="petOk">确定</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#petOk').onclick = function() {
+    var v = box.querySelector('#petName').value.trim();
+    if (v) pet.name = v;
+    SFX.pop();
+    log('🎉 它现在叫「' + pet.name + '」啦！', 'ok');
+    box.remove();
+    shopMenu();
+  };
+  box.querySelector('#petName').focus();
+}
+function petEvent(g) {
+  var pet = g.pets[Math.floor(Math.random() * g.pets.length)];
+  var ico = pet.type === 'cat' ? '🐱' : '🐶';
+  var r = Math.floor(Math.random() * 3);
+  if (r === 0) { addStat('mood', 6); log(ico + ' ' + pet.name + ' 跑来蹭你，心情+6', 'ok'); }
+  else if (r === 1) { addStat('mood', 5); addStat('energy', 5); log(ico + ' ' + pet.name + ' 陪你晨跑，体力+5，心情+5', 'ok'); }
+  else { addMoney(200); SFX.coin(); log(ico + ' ' + pet.name + ' 叼回一张 200 元钞票！', 'ok'); }
+}
+
+function bigEventRoll() {
+  var g = S();
+  if (Math.random() > 0.06) return;
+  var e = BIG_EVENTS[Math.floor(Math.random() * BIG_EVENTS.length)];
+  if (e.e) addStat('energy', e.e);
+  if (e.m) addStat('mood', e.m);
+  if (e.rel) addStat('rel', e.rel);
+  if (e.money) addMoney(e.money);
+  if (e.money > 0) SFX.coin();
+  SFX.fanfare();
+  log('🔥 大事件：' + e.t + (e.money ? '（+' + e.money + ' 元）' : ''), 'big');
+}
+
+/* ===== 小游戏：猜拳 / 拍蚂蚁 / 做饭 ===== */
+function rpsGame(rounds, onEnd) {
+  var r = 0, wins = 0;
+  function settle(mine, comp) {
+    r++;
+    if (mine === comp) log('平局：' + mine + ' vs ' + comp, '');
+    else if ((mine === '石头' && comp === '剪刀') || (mine === '剪刀' && comp === '布') || (mine === '布' && comp === '石头')) {
+      wins++; SFX.correct(); log('你赢了：' + mine + ' vs ' + comp, 'ok');
+    } else {
+      SFX.wrong(); log('你输了：' + mine + ' vs ' + comp, 'bad');
+    }
+    round();
+  }
+  function round() {
+    if (r >= rounds) { onEnd(wins); return; }
+    var comp = ['石头', '剪刀', '布'][Math.floor(Math.random() * 3)];
+    choices([
+      { text: '🪨 石头', cls: 'gray', fn: function() { settle('石头', comp); } },
+      { text: '✂️ 剪刀', cls: 'gray', fn: function() { settle('剪刀', comp); } },
+      { text: '📄 布', cls: 'gray', fn: function() { settle('布', comp); } }
+    ]);
+  }
+  logTitle('猜拳小游戏（' + rounds + ' 局）');
+  round();
+}
+function antGame(onEnd) {
+  var got = 0, resolved = 0;
+  var box = document.createElement('div');
+  box.style.cssText = 'position:relative;height:140px;background:#2f3a22;border:3px solid #48566b;border-radius:12px;margin-bottom:8px;overflow:hidden;';
+  $('choices').innerHTML = '';
+  $('choices').appendChild(box);
+  function done() { setTimeout(function() { $('choices').innerHTML = ''; onEnd(got); }, 350); }
+  function resolve() { resolved++; if (resolved >= 3) done(); }
+  for (var i = 0; i < 3; i++) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '🐜';
+    b.style.cssText = 'position:absolute;font-size:28px;background:none;border:none;cursor:pointer;left:' + (8 + Math.random() * 74) + '%;top:' + (8 + Math.random() * 55) + '%';
+    b.onclick = function() { SFX.pop(); got++; this.remove(); resolve(); };
+    box.appendChild(b);
+    (function(btn) {
+      setTimeout(function() { if (btn.parentNode) { btn.remove(); resolve(); } }, 4500);
+    })(b);
+  }
+  logTitle('野餐开始！快拍掉偷吃的小蚂蚁（3 只）');
+}
+function cookGame(onEnd) {
+  var n = 0, ok = 0;
+  function step() {
+    if (n >= 4) { onEnd(ok); return; }
+    n++;
+    $('choices').innerHTML = '';
+    var bar = document.createElement('div');
+    bar.id = 'fishing';
+    var zoneLeft = 20 + Math.random() * 45;
+    bar.innerHTML = '<div class="zone" style="left:' + zoneLeft + '%;width:22%"></div><div class="needle" style="left:0%"></div>';
+    $('choices').appendChild(bar);
+    var stop = document.createElement('button');
+    stop.type = 'button';
+    stop.className = 'btn orange';
+    stop.textContent = '🍳 第 ' + n + ' 步：翻锅！';
+    $('choices').appendChild(stop);
+    var pos = 0, dir = 1, raf = null;
+    var needle = bar.querySelector('.needle');
+    function tick() {
+      pos += dir * 3;
+      if (pos > 96) { pos = 96; dir = -1; }
+      if (pos < 0) { pos = 0; dir = 1; }
+      needle.style.left = pos + '%';
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    stop.onclick = function() {
+      cancelAnimationFrame(raf);
+      var hit = pos >= zoneLeft && pos <= zoneLeft + 22;
+      if (hit) { ok++; SFX.correct(); log('第 ' + n + ' 步完美！', 'ok'); }
+      else { SFX.wrong(); log('第 ' + n + ' 步糊了一点……', 'bad'); }
+      step();
+    };
+  }
+  logTitle('和柚柚一起做饭！看准时机翻锅（4 步）');
+  step();
+}
+
 function buyBao5() {
   var g = S();
-  if (g.money < 2000) { log('钱不够，还需要 ' + (2000 - g.money) + ' 元', 'bad'); return; }
-  addMoney(-2000);
+  if (g.money < 300000) { log('钱不够，还需要 ' + (300000 - g.money) + ' 元', 'bad'); return; }
+  addMoney(-300000);
   g.car = 'bao5';
   SFX.fanfare();
   SFX.coin();
@@ -1218,7 +1740,7 @@ function sleep() {
   S().phase = 'sleep';
   setScene('sleep');
   var g = S();
-  if (!g.liveTogether && g.rel >= 90) {
+  if (!g.liveTogether && g.rel >= 900) {
     g.liveTogether = true;
     g.cohabitDays = 1;
     g.withYoyo = true;
@@ -1257,7 +1779,38 @@ function nextDay() {
   else addStat('carClean', -12);
   addStat('full', -15);
   rollWeather();
-  if (g.rel >= 90) unlock('love');
+  resolveStock();
+  yoyoBuff();
+  modeRolls();
+  bigEventRoll();
+  if (g.equip) {
+    if (g.equip.phone) addStat('mood', 3);
+    if (g.equip.house) { addStat('energy', 5); addStat('mood', 5); }
+    if (g.equip.guitar && g.withYoyo) addStat('rel', 10);
+  }
+  if (g.pets && g.pets.length) {
+    for (var pi = 0; pi < g.pets.length; pi++) addStat('mood', 3);
+  }
+  if (g.carIssue) {
+    addStat('mood', -5);
+    log('🚨 车还没修好（' + (g.carIssue === 'tire' ? '轮胎' : '空调') + '），今晚记得去修！', 'bad');
+  }
+  if (g.ugly) {
+    addStat('mood', -3);
+    if (g.withYoyo) {
+      addStat('rel', 20);
+      log('柚柚看到你的黑眼圈，又心疼又好笑，关系+20', 'ok');
+    } else {
+      log('顶着黑眼圈出门，今天有点憔悴，心情-3', 'bad');
+    }
+    g.ugly = false;
+  }
+  if (g.handsome) {
+    addStat('mood', 5);
+    log('✨ 昨天K歌太帅，今天走路都带风，心情+5', 'ok');
+    g.handsome = false;
+  }
+  if (g.rel >= 900) unlock('love');
   if (g.vis.drive >= 10) unlock('drive10');
   g.phase = 'morning';
   setScene('road');
@@ -1285,8 +1838,8 @@ function startScreen() {
   logTitle('欢迎来到《酸酸的一天》');
   log('你住在瓦尔登湖，是川川出版社的老板。每天开车上班或出去玩，吃饭、K歌、钓鱼，还能和柚柚一起。', '');
   log('代表作《大三年》最近卖得不错，签名版都断货了。', '');
-  log('攒够 2000 元就能换浅绿色豹5，还能睡在车里哦！', '');
-  log('把柚柚好感刷到 90，还能触发"住在一起"结局，解锁同居玩法！', '');
+  log('目标：努力赚到 30 万买浅绿色豹5（运气好 15 天，运气差 35 天）！', '');
+  log('把柚柚好感刷到 900，还能触发"住在一起"结局，解锁同居玩法！', '');
   choices([
     { text: '🌟 新的开始', cls: 'green', fn: function() { startNew(); } },
     { text: '📂 继续游戏', cls: 'blue', fn: function() {
@@ -1311,8 +1864,8 @@ function beginDay() {
 }
 
 function renderSndBtns() {
-  $('sfxBtn').textContent = SFX.isMuted() ? '🔇 音效关' : '🔊 音效开';
-  $('musicBtn').textContent = SFX.isMusicOn() ? '🎵 背景开' : '🎵 背景关';
+  $('sfxBtn').textContent = SFX.isMuted() ? '🔇' : '🔊';
+  $('musicBtn').textContent = SFX.isMusicOn() ? '🎵' : '⏸';
 }
 $('sfxBtn').onclick = function() { SFX.toggleMute(); renderSndBtns(); };
 $('musicBtn').onclick = function() { SFX.toggleMusic(); renderSndBtns(); };
@@ -1320,6 +1873,12 @@ renderSndBtns();
 
 window.__S = loadSave() || newGame();
 startScreen();
+function animLoop() {
+  FRAME++;
+  draw();
+  requestAnimationFrame(animLoop);
+}
+animLoop();
 window.addEventListener('beforeunload', save);
 </script>
 <div id="gate">

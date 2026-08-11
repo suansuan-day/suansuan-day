@@ -168,6 +168,22 @@
   }
   .modal .box h2 { margin: 0 0 8px; font-size: 18px; color: #ffd166; }
   .modal .box p { font-size: 14px; line-height: 1.6; margin: 6px 0; }
+  .shop-top {
+    background: #ff5000; color: #fff; padding: 10px 12px;
+    border-radius: 10px 10px 0 0;
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 800; font-size: 15px;
+  }
+  .shop-balance { font-size: 12px; background: rgba(255,255,255,.22); padding: 2px 8px; border-radius: 8px; }
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f0f0f0; padding: 8px; border-radius: 0 0 10px 10px; }
+  .shop-card { background: #fff; border-radius: 10px; padding: 10px 8px; text-align: center; }
+  .shop-card .ico { font-size: 34px; line-height: 1; }
+  .shop-card .nm { font-size: 13px; font-weight: 700; color: #333; margin: 5px 0 2px; }
+  .shop-card .pr { color: #ff5000; font-weight: 800; font-size: 14px; }
+  .shop-card .owned { color: #999; font-size: 12px; margin-top: 4px; }
+  .shop-buy { margin-top: 6px; background: #ff5000; color: #fff; border: none; border-radius: 16px; min-height: 30px; font-size: 13px; font-weight: 700; width: 100%; cursor: pointer; }
+  .shop-buy:disabled { background: #ccc; cursor: default; }
+  .shop-back { margin-top: 8px; }
   .ticketBar {
     margin-top: 10px; text-align: center; font-size: 13px; color: #ffd166;
     background: rgba(255,209,102,.12); border: 2px dashed #ffd166;
@@ -298,6 +314,15 @@ var WORK_BUFFS = [
   { name: '咖啡加持', t: '☕ 咖啡加持，体力 +10', energy: 10 },
   { name: '摸鱼被抓', t: '🐟 摸鱼被主编抓包，心情 -8', mood: -8 },
   { name: '稿子被打回', t: '📝 稿子被打回重改，心情 -10', mood: -10 }
+];
+
+var DISHES = [
+  { name: '热干面', good: 1, t: '🍜 芝麻酱香浓，是瓦尔登湖边的乡愁', full: 30, mood: 8 },
+  { name: '螺蛳粉', good: 1, t: '🍜 又臭又香，越吃越上头', full: 28, mood: 6 },
+  { name: '酸菜鱼火锅', good: 0, t: '🥘 酸菜鱼火锅看着不错，但今天的鱼有点腥……', full: 24, mood: -5 },
+  { name: '烧烤', good: 0, t: '🍢 烧烤烤糊了一半，勉强能吃', full: 22, mood: -3 },
+  { name: '臭豆腐炖榴莲', good: 0, t: '🫕 臭豆腐炖榴莲……这是什么黑暗料理！', full: 18, mood: -8 },
+  { name: '折耳根炒腊肉', good: 0, t: '🥬 折耳根炒腊肉，爱的人超爱，恨的人直接沉默', full: 20, mood: -4 }
 ];
 
 var BIG_EVENTS = [
@@ -1085,12 +1110,22 @@ function showChoicesOf(phase) {
       morningChoicesUI();
       break;
     case 'playPlace':
-      choices([
-        { text: '🌳 公园散步', cls: 'green', fn: function() { parkWalk(); } },
-        { text: '⛰️ 山上野餐', cls: 'orange', fn: function() { mountainPicnic(); } },
-        { text: '🎣 湖边钓鱼', cls: 'blue', fn: function() { startFishing(); } },
-        { text: '↩️ 还是去上班吧', cls: 'gray', fn: startWork }
-      ]);
+      if (g.withYoyo) {
+        choices([
+          { text: '🌳 公园散步', cls: 'green', fn: function() { parkWalk(); } },
+          { text: '⛰️ 山上野餐', cls: 'orange', fn: function() { mountainPicnic(); } },
+          { text: '🎣 湖边钓鱼', cls: 'blue', fn: function() { startFishing(); } },
+          { text: '↩️ 还是去上班吧', cls: 'gray', fn: startWork }
+        ]);
+      } else {
+        choices([
+          { text: '💬 找洋洋聊天看电视', cls: 'blue', fn: yangyangTV },
+          { text: '🎣 找老黄搞美食钓巨物', cls: 'green', fn: laohuang },
+          { text: '🍽️ 找肚肚请吃大餐', cls: 'orange', fn: dudu },
+          { text: '🌧️ 忧郁的一天', cls: 'gray', fn: gloomyDay },
+          { text: '↩️ 还是去上班吧', cls: 'gray', fn: startWork }
+        ]);
+      }
       break;
     case 'lunch':
       choices([
@@ -1353,6 +1388,175 @@ function afterPicnic() {
   unlock('play1');
   logTitle('野餐结束，下山吃饭去，吃什么？');
   showChoicesOf('lunch');
+}
+
+/* ===== 不带柚柚的朋友线玩法 ===== */
+function randomDish() {
+  return DISHES[Math.floor(Math.random() * DISHES.length)];
+}
+function applyDish(dish) {
+  addStat('full', dish.full);
+  addStat('mood', dish.mood);
+  if (dish.good) SFX.correct(); else SFX.wrong();
+  log(dish.t, dish.good ? 'ok' : 'bad');
+}
+function afterFriendLunch() {
+  logTitle('玩得差不多了，吃什么？');
+  showChoicesOf('lunch');
+}
+function tapRace(target, secs, onEnd) {
+  var count = 0, timeLeft = secs;
+  $('choices').innerHTML = '';
+  $('choices').className = '';
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'btn orange';
+  b.textContent = '👆 狂点我！目标 ' + target + ' 次（' + timeLeft + 's）';
+  $('choices').appendChild(b);
+  var timer = setInterval(function() {
+    timeLeft--;
+    if (b.parentNode) b.textContent = '👆 狂点我！目标 ' + target + ' 次（' + timeLeft + 's）';
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      $('choices').innerHTML = '';
+      onEnd(count);
+    }
+  }, 1000);
+  b.onclick = function() { count++; SFX.pop(); };
+}
+function barGame(steps, label, onEnd) {
+  var n = 0, ok = 0;
+  function step() {
+    if (n >= steps) { onEnd(ok); return; }
+    n++;
+    $('choices').innerHTML = '';
+    var bar = document.createElement('div');
+    bar.id = 'fishing';
+    var zoneLeft = 18 + Math.random() * 45;
+    bar.innerHTML = '<div class="zone" style="left:' + zoneLeft + '%;width:24%"></div><div class="needle" style="left:0%"></div>';
+    $('choices').appendChild(bar);
+    var stop = document.createElement('button');
+    stop.type = 'button';
+    stop.className = 'btn green';
+    stop.textContent = '🎯 第 ' + n + ' 次：就是现在！';
+    $('choices').appendChild(stop);
+    var pos = 0, dir = 1, raf = null;
+    var needle = bar.querySelector('.needle');
+    function tick() {
+      pos += dir * 3;
+      if (pos > 96) { pos = 96; dir = -1; }
+      if (pos < 0) { pos = 0; dir = 1; }
+      needle.style.left = pos + '%';
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    stop.onclick = function() {
+      cancelAnimationFrame(raf);
+      var hit = pos >= zoneLeft && pos <= zoneLeft + 24;
+      if (hit) { ok++; SFX.correct(); log('第 ' + n + ' 次完美！', 'ok'); }
+      else { SFX.wrong(); log('第 ' + n + ' 次差一点……', 'bad'); }
+      step();
+    };
+  }
+  logTitle(label);
+  step();
+}
+function cloudGame(onEnd) {
+  var got = 0, resolved = 0;
+  var box = document.createElement('div');
+  box.style.cssText = 'position:relative;height:140px;background:#3d4a5e;border:3px solid #48566b;border-radius:12px;margin-bottom:8px;overflow:hidden;';
+  $('choices').innerHTML = '';
+  $('choices').appendChild(box);
+  function done() { setTimeout(function() { $('choices').innerHTML = ''; onEnd(got); }, 350); }
+  function resolve() { resolved++; if (resolved >= 3) done(); }
+  for (var i = 0; i < 3; i++) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '☁️';
+    b.style.cssText = 'position:absolute;font-size:30px;background:none;border:none;cursor:pointer;left:' + (8 + Math.random() * 70) + '%;top:' + (10 + Math.random() * 50) + '%';
+    b.onclick = function() { SFX.pop(); got++; this.remove(); resolve(); };
+    box.appendChild(b);
+    (function(btn) {
+      setTimeout(function() { if (btn.parentNode) { btn.remove(); resolve(); } }, 4500);
+    })(b);
+  }
+  logTitle('忧郁的一天……点掉心里的乌云（3 朵）');
+}
+function yangyangTV() {
+  var g = S();
+  g.phase = 'lunch';
+  rememberPlace('yangyang');
+  setScene('home');
+  log('洋洋抱着薯片：老规矩，抢到遥控器看谁的剧！', '');
+  tapRace(25, 6, function(taps) {
+    if (taps >= 25) {
+      addStat('mood', 10);
+      log('你疯狂点击抢到了遥控器！看了三集悬疑剧，心情+10', 'ok');
+    } else {
+      addStat('mood', 4);
+      log('你手速慢了，洋洋得意地看起了偶像剧……心情+4', '');
+    }
+    if (Math.random() < 0.12) {
+      SFX.fanfare();
+      log('🎉 彩蛋！洋洋突然系上围裙：今天我给你做点吃的！', 'big');
+      applyDish(randomDish());
+    }
+    unlock('play1');
+    afterFriendLunch();
+  });
+}
+function laohuang() {
+  var g = S();
+  g.phase = 'lunch';
+  rememberPlace('laohuang');
+  setScene('lake');
+  log('老黄在湖边支好锅：先钓鱼，钓上巨物就给你做全鱼宴！', '');
+  barGame(3, '🎣 和老黄一起钓巨物（看准时机收杆）', function(ok) {
+    var cash = ok * 800 + (ok >= 2 ? 1200 : 0);
+    addMoney(cash);
+    addStat('mood', 4 + ok * 3);
+    addStat('energy', -8);
+    if (ok >= 2) log('🐟 巨物上钩！卖了 ' + cash + ' 元，老黄直呼好家伙', 'ok');
+    else log('钓上来几条小鱼，卖了 ' + cash + ' 元', '');
+    log('老黄说要给你露一手——', '');
+    applyDish(randomDish());
+    unlock('play1');
+    afterFriendLunch();
+  });
+}
+function dudu() {
+  var g = S();
+  g.phase = 'lunch';
+  rememberPlace('dudu');
+  setScene('home');
+  log('肚肚拍胸脯：这顿我请！转到啥吃啥！', '');
+  barGame(3, '🍽️ 大餐转盘（看准时机按停）', function(ok) {
+    addStat('full', 15 + ok * 8);
+    addStat('mood', 5 + ok * 4);
+    addStat('energy', 5 + ok * 3);
+    if (ok >= 2) { SFX.fanfare(); log('肚肚请客：龙虾和牛刺身吃到饱！', 'ok'); }
+    else log('转盘停在了小份例汤……肚肚说下次一定', '');
+    unlock('play1');
+    afterFriendLunch();
+  });
+}
+function gloomyDay() {
+  var g = S();
+  g.phase = 'lunch';
+  rememberPlace('gloomy');
+  setScene('sleep');
+  log('今天不想见人，只想一个人待着……天上飘来几朵乌云。', '');
+  cloudGame(function(got) {
+    if (got >= 3) {
+      addStat('mood', 8);
+      log('你把乌云都点散了，心里也晴朗了一点，心情+8', 'ok');
+    } else {
+      addStat('mood', -3);
+      log('乌云越积越多……心情-3', 'bad');
+    }
+    unlock('play1');
+    afterFriendLunch();
+  });
 }
 
 function startFishing() {
@@ -1796,15 +2000,57 @@ function modeRolls() {
 
 /* ===== 商城 / 装备 / 宠物 ===== */
 function shopMenu() {
-  choices([
-    { text: '📱 新款手机（5万）', cls: 'blue', fn: function() { buyEquip('phone'); } },
-    { text: '🎸 木吉他（2万）', cls: 'orange', fn: function() { buyEquip('guitar'); } },
-    { text: '🎤 麦克风套装（1万）', cls: 'green', fn: function() { buyEquip('mic'); } },
-    { text: '🏠 瓦尔登湖大平层（50万）', cls: 'blue', fn: function() { buyEquip('house'); } },
-    { text: '🐱 领养一只猫（1000元）', cls: 'orange', fn: function() { adoptPet('cat'); } },
-    { text: '🐶 领养一只狗（1500元）', cls: 'orange', fn: function() { adoptPet('dog'); } },
-    { text: '↩️ 返回', cls: 'gray', fn: showNight }
-  ]);
+  var g = S();
+  $('choices').innerHTML = '';
+  $('choices').className = '';
+  var items = [
+    { kind: 'phone', ico: '📱', name: '新款手机', price: 50000, owned: !!(g.equip && g.equip.phone), fn: function() { buyEquip('phone'); } },
+    { kind: 'guitar', ico: '🎸', name: '木吉他', price: 20000, owned: !!(g.equip && g.equip.guitar), fn: function() { buyEquip('guitar'); } },
+    { kind: 'mic', ico: '🎤', name: '麦克风套装', price: 10000, owned: !!(g.equip && g.equip.mic), fn: function() { buyEquip('mic'); } },
+    { kind: 'house', ico: '🏠', name: '瓦尔登湖大平层', price: 500000, owned: !!(g.equip && g.equip.house), fn: function() { buyEquip('house'); } },
+    { kind: 'cat', ico: '🐱', name: '领养猫咪', price: 1000, owned: false, fn: function() { adoptPet('cat'); } },
+    { kind: 'dog', ico: '🐶', name: '领养狗狗', price: 1500, owned: false, fn: function() { adoptPet('dog'); } },
+    { kind: 'bao5', ico: '🚙', name: '浅绿豹5', price: 300000, owned: g.car === 'bao5' || g.car === 'benz', fn: shopBuyCar }
+  ];
+  var html = '<div class="shop">';
+  html += '<div class="shop-top"><span>🍑 淘淘商城</span><span class="shop-balance">余额 ' + g.money + ' 元</span></div>';
+  html += '<div class="shop-grid">';
+  items.forEach(function(it) {
+    html += '<div class="shop-card"><div class="ico">' + it.ico + '</div><div class="nm">' + it.name + '</div>' +
+      (it.owned ? '<div class="owned">✅ 已拥有</div>' : '<div class="pr">¥' + it.price + '</div>') +
+      '<button type="button" class="shop-buy" data-kind="' + it.kind + '"' + (it.owned ? ' disabled' : '') + '>' + (it.owned ? '已拥有' : '立即购买') + '</button></div>';
+  });
+  html += '</div>';
+  html += '<button type="button" class="btn gray shop-back" data-kind="back">↩️ 返回</button>';
+  html += '</div>';
+  $('choices').innerHTML = html;
+  var buyMap = {};
+  items.forEach(function(it) { buyMap[it.kind] = it.fn; });
+  var all = $('choices').querySelectorAll('.shop-buy');
+  for (var i = 0; i < all.length; i++) {
+    (function(btn) {
+      btn.addEventListener('click', function() {
+        SFX.click();
+        var k = btn.getAttribute('data-kind');
+        if (buyMap[k]) buyMap[k]();
+      });
+    })(all[i]);
+  }
+  var back = $('choices').querySelector('[data-kind="back"]');
+  if (back) back.addEventListener('click', function() { SFX.click(); showNight(); });
+}
+function shopBuyCar() {
+  var g = S();
+  if (g.car !== 'buick') { log('已经有更好的车啦', 'bad'); shopMenu(); return; }
+  if (g.money < 300000) { log('钱不够买豹5，还差 ' + (300000 - g.money) + ' 元', 'bad'); shopMenu(); return; }
+  addMoney(-300000);
+  g.car = 'bao5';
+  setTheme('car');
+  SFX.fanfare();
+  SFX.coin();
+  log('🎉 提车！浅绿色豹5到手，以后可以睡在车里了！', 'ok');
+  unlock('bao5');
+  shopMenu();
 }
 function buyEquip(kind) {
   var g = S();

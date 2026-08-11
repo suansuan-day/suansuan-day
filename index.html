@@ -208,7 +208,9 @@ var ACH = [
   { id: 'tsundere', t: '傲娇的一天', d: '经历一次柚柚的傲娇模式' },
   { id: 'stock',    t: '股海沉浮',   d: '第一次炒股' },
   { id: 'late',     t: '夜猫子',     d: '熬夜 3 次' },
-  { id: 'grandma',  t: '外婆家',     d: '去外婆家看她一次' }
+  { id: 'grandma',  t: '外婆家',     d: '去外婆家看她一次' },
+  { id: 'luck33',   t: '幸运33',     d: '玩到第 33 天' },
+  { id: 'benz',     t: '大奔驰',     d: '被柚柚包养，收到大奔驰' }
 ];
 
 var EVENTS = [
@@ -222,7 +224,9 @@ var EVENTS = [
   { t: '彩票刮出 1000 元！', money: 1000, m: 8 },
   { t: '车胎被钉子扎了！今晚得去修车', m: -6, carIssue: 'tire' },
   { t: '空调坏了，车里闷得慌，得去修', m: -8, carIssue: 'ac' },
-  { t: '晚上星空超好看，心情+5', m: 5 }
+  { t: '晚上星空超好看，心情+5', m: 5 },
+  { t: '你看到一辆车牌号是 33 的车，心情+3', m: 3 },
+  { t: '地上捡到 33 元！好运！', money: 33, m: 2 }
 ];
 
 var COHABIT_EVENTS = [
@@ -376,7 +380,8 @@ function newGame() {
     liveTogether: false, cohabitDays: 0,
     carIssue: null, tsundere: false, melancholy: false,
     stock: null, lateNights: 0, grandmaSeen: false, swanNight: false,
-    workBuff: null, equip: {}, pets: [], ugly: false, handsome: false
+    workBuff: null, equip: {}, pets: [], ugly: false, handsome: false,
+    routes: {}, uglyCount: 0, handsomeCount: 0
   };
 }
 function S() { return window.__S; }
@@ -616,7 +621,7 @@ function renderTop() {
   $('dayNum').textContent = S().day;
   $('moneyNum').textContent = S().money;
   $('weatherLabel').textContent = weatherNow().ico + ' ' + weatherNow().name;
-  $('carLabel').textContent = S().car === 'bao5' ? '🚙 豹5' : '🚗 小别克';
+  $('carLabel').textContent = S().car === 'bao5' ? '🚙 豹5' : (S().car === 'benz' ? '🚗 大奔驰' : '🚗 小别克');
 }
 function renderStats() {
   var map = [
@@ -807,6 +812,17 @@ function drawCarOutside() {
     px(216, 146, 26, 26, '#2a2f38');
     px(246, 146, 26, 26, '#2a2f38');
     px(70, 150, 220, 6, '#7aa862');
+  } else if (S().car === 'benz') {
+    px(75, 98, 210, 50, '#b03a2e');
+    px(75, 98, 210, 12, '#8e2d24');
+    px(100, 82, 42, 22, '#d9d9de');
+    px(152, 82, 42, 22, '#d9d9de');
+    px(204, 82, 42, 22, '#d9d9de');
+    px(92, 144, 26, 26, '#2a2f38');
+    px(126, 144, 26, 26, '#2a2f38');
+    px(212, 144, 26, 26, '#2a2f38');
+    px(246, 144, 26, 26, '#2a2f38');
+    px(75, 150, 210, 5, '#7e241c');
   } else {
     px(80, 104, 200, 46, '#f0f2f5');
     px(80, 104, 200, 12, '#d8dde4');
@@ -828,6 +844,12 @@ function drawWash() {
     px(220, 70, 40, 20, '#d6f2c2');
     px(96, 128, 24, 22, '#2a2f38');
     px(240, 128, 24, 22, '#2a2f38');
+  } else if (S().car === 'benz') {
+    px(85, 88, 190, 44, '#c44536');
+    px(104, 72, 38, 20, '#e8e8ee');
+    px(212, 72, 38, 20, '#e8e8ee');
+    px(100, 128, 24, 22, '#2a2f38');
+    px(236, 128, 24, 22, '#2a2f38');
   } else {
     px(90, 94, 180, 40, '#ffffff');
     px(112, 80, 36, 18, '#dcecf9');
@@ -867,6 +889,12 @@ function drawRoad() {
     px(216, 74, 40, 22, '#bfe8a4');
     px(96, 136, 24, 22, '#2a2f38');
     px(240, 136, 24, 22, '#2a2f38');
+  } else if (S().car === 'benz') {
+    px(85, 94, 190, 46, '#b03a2e');
+    px(106, 78, 40, 20, '#d9d9de');
+    px(214, 78, 40, 20, '#d9d9de');
+    px(100, 136, 24, 22, '#2a2f38');
+    px(236, 136, 24, 22, '#2a2f38');
   } else {
     px(90, 100, 180, 40, '#f0f2f5');
     px(112, 84, 36, 20, '#cfe4f5');
@@ -1163,15 +1191,22 @@ function startFishing() {
     cancelAnimationFrame(raf);
     var inZone = pos >= 28 && pos <= 54;
     if (inZone) {
-      var size = Math.random();
-      var price = size < 0.5 ? 200 : (size < 0.8 ? 350 : 600);
-      addMoney(price);
       g.fishCount++;
       addStat('mood', 10);
       addStat('energy', -10);
-      SFX.splash();
-      SFX.coin();
-      log('🐟 上钩了！卖鱼得 ' + price + ' 元，心情 +10', 'ok');
+      if (Math.random() < 0.04) {
+        addMoney(3333);
+        addStat('mood', 15);
+        SFX.fanfare();
+        log('👢 你钓到一只旧靴子，里面居然有 3333 元！', 'ok');
+      } else {
+        var size = Math.random();
+        var price = size < 0.5 ? 200 : (size < 0.8 ? 350 : 600);
+        addMoney(price);
+        SFX.splash();
+        SFX.coin();
+        log('🐟 上钩了！卖鱼得 ' + price + ' 元，心情 +10', 'ok');
+      }
       unlock('fish1');
     } else {
       addStat('mood', -3);
@@ -1260,6 +1295,7 @@ function carAct(act) {
       if (g.withYoyo) { addStat('mood', 4); log('柚柚在旁边给你鼓掌，关系 +30', 'ok'); addStat('rel', 30); }
       if (Math.random() < 0.3) {
         g.handsome = true;
+        g.handsomeCount++;
         addStat('mood', 5);
         if (g.withYoyo) addStat('rel', 30);
         log('✨ 你刚才唱歌的样子帅到发光！' + (g.withYoyo ? '柚柚看呆了，关系+30' : '心情+5'), 'ok');
@@ -1269,6 +1305,8 @@ function carAct(act) {
         addStat('mood', 15);
         if (g.withYoyo) addStat('rel', 100);
         g.handsome = true;
+        g.handsomeCount++;
+        if (Math.random() < 0.2) log('🎸 舞台边似乎有个身影对你竖了个大拇指……', '');
         log('🎤 歌神附体！一首《泪桥》唱得全车安静，心情+15' + (g.withYoyo ? '，关系+100' : ''), 'ok');
         unlock('godsing');
       }
@@ -1338,7 +1376,7 @@ function carAfterAct() {
   var g = S();
   g.phase = 'carEnd';
   setScene('carout');
-  if (g.car === 'bao5') {
+  if (g.car === 'bao5' || g.car === 'benz') {
     logTitle('天快黑了。豹5可以当床睡哦');
     g.phase = 'carSleep';
     showChoicesOf('carSleep');
@@ -1450,6 +1488,7 @@ function stayUpLate() {
   else { addMoney(800); addStat('energy', -30); log('熬夜偷偷接了个校对私活，赚了 800 元', 'ok'); }
   if (Math.random() < 0.3) {
     g.ugly = true;
+    g.uglyCount++;
     addStat('mood', -5);
     log('😵 熬夜太狠，黑眼圈都出来了……明天可能要变丑！', 'bad');
   }
@@ -1610,6 +1649,8 @@ function petNameModal(pet) {
     var v = box.querySelector('#petName').value.trim();
     if (v) pet.name = v;
     SFX.pop();
+    if (v === '马云' || v === '马化腾') log('🧐 这个名字……好像在哪里听过？', '');
+    if (v === '33' || v === '三三') log('33️⃣ 数字的祝福！它看你的眼神都不一样了', 'ok');
     log('🎉 它现在叫「' + pet.name + '」啦！', 'ok');
     box.remove();
     shopMenu();
@@ -1636,6 +1677,60 @@ function bigEventRoll() {
   if (e.money > 0) SFX.coin();
   SFX.fanfare();
   log('🔥 大事件：' + e.t + (e.money ? '（+' + e.money + ' 元）' : ''), 'big');
+}
+
+/* ===== 人生路线系统 ===== */
+var ROUTES = [
+  { id: 'tycoon', icon: '💰', name: '大富翁路线', desc: '存款突破 100 万！每天银行利息 +10000',
+    check: function(g) { return g.money >= 1000000; },
+    daily: function() { addMoney(10000); log('💰 大富翁路线：银行利息 +10000 元', 'ok'); } },
+  { id: 'mayun', icon: '👨‍💼', name: '变丑马云路线', desc: '熬夜变丑 5 次，丑得有价值：每天多赚 5000',
+    check: function(g) { return g.uglyCount >= 5; },
+    daily: function() { addMoney(5000); log('👨‍💼 马云路线：丑但能赚，+5000 元', 'ok'); } },
+  { id: 'star', icon: '🌟', name: '大明星路线', desc: '唱歌变帅 5 次，出道当明星！每天心情+8',
+    check: function(g) { return g.handsomeCount >= 5; },
+    daily: function() { addStat('mood', 8); log('🌟 大明星路线：粉丝应援，心情+8', 'ok'); } },
+  { id: 'novelist', icon: '📖', name: '小说家路线', desc: '深耕出版 25 天，成为畅销小说家，每天版税 +2000',
+    check: function(g) { return g.day >= 25; },
+    daily: function() { addMoney(2000); log('📖 小说家路线：《大三年》版税 +2000 元', 'ok'); } },
+  { id: 'singer', icon: '🎤', name: '歌手明星路线', desc: 'K歌 20 次，正式出道，每天商演 +1000',
+    check: function(g) { return g.vis.ktv >= 20 || g.ach.godsing; },
+    daily: function() { addMoney(1000); addStat('mood', 5); log('🎤 歌手路线：商演 +1000 元，心情+5', 'ok'); } },
+  { id: 'kept', icon: '👑', name: '被柚柚包养路线', desc: '柚柚好感满级！她送你一辆大奔驰，还每天给你零花钱',
+    check: function(g) { return g.rel >= 1000; },
+    onTrigger: function(g) {
+      if (g.car !== 'benz') {
+        g.car = 'benz';
+        unlock('benz');
+        log('🚗 柚柚送你一辆大奔驰！以后不用自己攒钱买车了', 'ok');
+      }
+    },
+    daily: function() { addMoney(3000); log('👑 被柚柚包养：零花钱 +3000 元', 'ok'); } }
+];
+function checkRoutes() {
+  var g = S();
+  for (var i = 0; i < ROUTES.length; i++) {
+    var r = ROUTES[i];
+    if (g.routes[r.id]) continue;
+    if (r.check(g)) {
+      g.routes[r.id] = 1;
+      SFX.fanfare();
+      showRouteCard(r);
+      log(r.icon + ' 新路线解锁：' + r.name, 'big');
+      if (r.onTrigger) r.onTrigger(g);
+    }
+  }
+  for (var j = 0; j < ROUTES.length; j++) {
+    var r2 = ROUTES[j];
+    if (g.routes[r2.id] && r2.daily) r2.daily(g);
+  }
+}
+function showRouteCard(r) {
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>' + r.icon + ' ' + r.name + '</h2><p>' + r.desc + '</p><button type="button" class="btn green" id="routeClose">太棒了！</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#routeClose').onclick = function() { SFX.click(); box.remove(); };
 }
 
 /* ===== 小游戏：猜拳 / 拍蚂蚁 / 做饭 ===== */
@@ -1783,6 +1878,14 @@ function nextDay() {
   yoyoBuff();
   modeRolls();
   bigEventRoll();
+  checkRoutes();
+  if (g.day === 33) {
+    unlock('luck33');
+    addMoney(3333);
+    addStat('mood', 33);
+    SFX.fanfare();
+    log('33️⃣ 第 33 天！窗外的云刚好组成一个"33"，你捡到 3333 元红包！', 'big');
+  }
   if (g.equip) {
     if (g.equip.phone) addStat('mood', 3);
     if (g.equip.house) { addStat('energy', 5); addStat('mood', 5); }
@@ -1873,6 +1976,31 @@ renderSndBtns();
 
 window.__S = loadSave() || newGame();
 startScreen();
+var titleClicks = 0;
+if (canvas && canvas.addEventListener) {
+  canvas.addEventListener('click', function(ev) {
+    var g = S();
+    if (g.scene !== 'title') return;
+    var rect = canvas.getBoundingClientRect();
+    if (!rect || !rect.width) return;
+    var x = (ev.clientX - rect.left) / rect.width * 360;
+    var y = (ev.clientY - rect.top) / rect.height * 240;
+    if (y > 48 && y < 74 && Math.abs(x - 180) < 90) {
+      titleClicks++;
+      if (titleClicks === 5) {
+        addStat('mood', 5);
+        SFX.chime();
+        log('💬 你终于注意到我了……（隐藏 buff：心情+5）', 'ok');
+      }
+    } else if (x > 100 && x < 168 && y > 66 && y < 150) {
+      SFX.pop();
+      log('💬 酸酸：今天也是元气满满的一天！', '');
+    } else if (x > 198 && x < 266 && y > 66 && y < 150) {
+      SFX.pop();
+      log('💬 柚柚：哼，才不是特意来看你的！', '');
+    }
+  });
+}
 function animLoop() {
   FRAME++;
   draw();

@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>酸酸的一天</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: #1d2430; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color: #f5f0e8;
+    display: flex; justify-content: center;
+    min-height: 100vh;
+  }
+  #game {
+    width: 100%; max-width: 440px;
+    min-height: 100vh;
+    background: #262f3d;
+    display: flex; flex-direction: column;
+    padding: 10px 12px 20px;
+    touch-action: manipulation;
+  }
+  #topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 4px;
+    background: #323e50; border: 3px solid #48566b; border-radius: 12px;
+    padding: 8px 10px; margin-bottom: 8px;
+    font-size: 13px; font-weight: 600;
+  }
+  .sndbtn {
+    background: #48566b; color: #fff; border: 2px solid #5c6b82;
+    border-radius: 8px; min-height: 26px; font-size: 12px; cursor: pointer;
+    padding: 2px 7px; margin-left: 4px;
+  }
+  .sndbtn:active { transform: translateY(1px); }
+  #topbar .day { color: #ffd166; }
+  #topbar .money { color: #7ee081; }
+  .weather-ico { margin-right: 3px; }
+  #sceneWrap {
+    position: relative; width: 100%;
+    border: 4px solid #48566b; border-radius: 14px; overflow: hidden;
+    background: #87ceeb;
+    aspect-ratio: 3 / 2;
+  }
+  #scene {
+    width: 100%; height: 100%;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  #stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px; margin: 8px 0;
+  }
+  .stat {
+    background: #323e50; border: 2px solid #48566b; border-radius: 10px;
+    padding: 5px 7px;
+  }
+  .stat .label { font-size: 11px; color: #b9c4d4; display: flex; justify-content: space-between; }
+  .stat .bar { height: 8px; background: #1d2430; border-radius: 4px; margin-top: 3px; overflow: hidden; }
+  .stat .bar i { display: block; height: 100%; border-radius: 4px; transition: width .25s; }
+  .b-energy i { background: #ffd166; }
+  .b-mood i { background: #ff8fa3; }
+  .b-full i { background: #f4a261; }
+  .b-car i { background: #7ee0e8; }
+  .b-rel i { background: #f49bc1; }
+  .b-money i { background: #7ee081; }
+  #log {
+    background: #1d2430; border: 2px solid #3a465a; border-radius: 10px;
+    padding: 8px 10px; min-height: 58px; max-height: 108px; overflow-y: auto;
+    font-size: 14px; line-height: 1.55; margin-bottom: 8px;
+  }
+  #log .ev { color: #ffd166; font-weight: 600; }
+  #log .ok { color: #7ee081; }
+  #log .bad { color: #ff8fa3; }
+  #choices { display: flex; flex-direction: column; gap: 8px; }
+  #choices.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #choices.grid2 .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .btn {
+    width: 100%; min-height: 46px;
+    background: #3d7dd6; color: #fff; border: 3px solid #5a97e8;
+    border-radius: 12px; font-size: 15px; font-weight: 700;
+    cursor: pointer; padding: 8px 10px; text-align: center;
+  }
+  .btn:active { transform: translateY(2px); }
+  .btn.pink { background: #d65a8f; border-color: #ec7eae; }
+  .btn.green { background: #3f9e5f; border-color: #66c484; }
+  .btn.blue { background: #3d7dd6; border-color: #5a97e8; }
+  .btn.orange { background: #d9822b; border-color: #efa75a; }
+  .btn.gray { background: #5b677a; border-color: #7b8799; }
+  .btn.small { min-height: 40px; font-size: 13px; }
+  .title {
+    text-align: center; margin: 4px 0 8px;
+    font-size: 24px; font-weight: 800; color: #ffd166;
+    text-shadow: 2px 2px 0 #8a5a22;
+    letter-spacing: 4px;
+  }
+  .subtitle { text-align: center; font-size: 12px; color: #b9c4d4; margin-bottom: 8px; }
+  #achList { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+  .ach {
+    background: #323e50; border: 2px solid #48566b; border-radius: 10px;
+    padding: 6px 9px; font-size: 13px;
+  }
+  .ach.done { border-color: #66c484; }
+  .ach .t { font-weight: 700; }
+  .ach .d { color: #b9c4d4; font-size: 12px; }
+  .ach.done .t { color: #7ee081; }
+  .modal {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,.62);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal .box {
+    background: #262f3d; border: 4px solid #ffd166; border-radius: 16px;
+    max-width: 340px; width: calc(100% - 40px);
+    padding: 16px; text-align: center;
+  }
+  .modal .box h2 { margin: 0 0 8px; font-size: 18px; color: #ffd166; }
+  .modal .box p { font-size: 14px; line-height: 1.6; margin: 6px 0; }
+  #fishing {
+    width: 100%; height: 46px; background: #1d2430;
+    border: 3px solid #48566b; border-radius: 12px; position: relative;
+    overflow: hidden; margin: 8px 0;
+  }
+  #fishing .needle { position: absolute; top: 0; width: 4px; height: 100%; background: #ffd166; }
+  #fishing .zone { position: absolute; top: 0; height: 100%; background: rgba(126,224,129,.45); }
+  #workQ {
+    background: #323e50; border: 3px solid #48566b; border-radius: 12px;
+    padding: 12px; margin-bottom: 8px; text-align: center; font-size: 16px; font-weight: 700;
+  }
+  #workInput {
+    width: 100%; min-height: 44px; font-size: 18px; text-align: center;
+    border: 3px solid #48566b; border-radius: 10px; background: #1d2430; color: #ffd166;
+    margin-bottom: 8px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hidden { display: none !important; }
+  @media (min-width: 440px) {
+    #game { border-left: 2px solid #48566b; border-right: 2px solid #48566b; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="topbar">
+    <span class="day">第 <span id="dayNum">1</span> 天</span>
+    <span id="weatherLabel">☀️ 晴</span>
+    <span id="carLabel">🚗 小别克</span>
+    <span class="money">💰 <span id="moneyNum">100</span></span>
+    <span id="sndBtns">
+      <button type="button" id="sfxBtn" class="sndbtn">🔊</button>
+      <button type="button" id="musicBtn" class="sndbtn">♪ 关</button>
+    </span>
+  </div>
+  <div id="sceneWrap"><canvas id="scene" width="360" height="240"></canvas></div>
+  <div id="stats"></div>
+  <div id="log"></div>
+  <div id="workQ" class="hidden"></div>
+  <input id="workInput" class="hidden" type="number" inputmode="numeric" placeholder="输入答案">
+  <div id="choices"></div>
+</div>
+<script>
+'use strict';
+var KEY = 'suansuan-day-v1';
+var $ = function(id) { return document.getElementById(id); };
+var canvas = $('scene'), ctx = canvas.getContext('2d');
+
+var WEATHER = [
+  { id: 'sunny', ico: '☀️', name: '晴' },
+  { id: 'cloudy', ico: '☁️', name: '多云' },
+  { id: 'rain',   ico: '🌧️', name: '小雨' }
+];
+
+var ACH = [
+  { id: 'work1',    t: '打工第一日', d: '完成第一次上班' },
+  { id: 'play1',    t: '今天不上班', d: '第一次出去玩' },
+  { id: 'picnic',   t: '野餐达人',   d: '在山上野餐一次' },
+  { id: 'fish1',    t: '钓鱼佬',     d: '钓到第一条鱼' },
+  { id: 'drive10',  t: '老司机',     d: '累计开车 10 天' },
+  { id: 'wash3',    t: '爱车如命',   d: '洗车 3 次' },
+  { id: 'bao5',     t: '豹5 车主',   d: '买下浅绿色豹5' },
+  { id: 'sleepcar', t: '露营之夜',   d: '在豹5上睡一晚' },
+  { id: 'ktv5',     t: 'K歌之王',    d: '车上K歌 5 次' },
+  { id: 'fight1',   t: '小吵怡情',   d: '和柚柚吵一次架' },
+  { id: 'ice5',     t: '冰饮好友',   d: '喝到柚柚冰饮 5 次' },
+  { id: 'rich',     t: '攒钱高手',   d: '存款达到 1000 元' },
+  { id: 'love',     t: '心有灵犀',   d: '与柚柚关系达到 90' },
+  { id: 'cohabit',  t: '住在一起',   d: '触发结局：柚柚搬来一起住' },
+  { id: 'cohabit10', t: '同居生活',  d: '同居满 10 天' }
+];
+
+var EVENTS = [
+  { t: '早上出门堵车了，心情-5', m: -5, money: 0, car: 0 },
+  { t: '下起小雨，车身溅了点泥，车况-6', m: -2, money: 0, car: -6 },
+  { t: '路边捡到 50 元！', m: 4, money: 50, car: 0 },
+  { t: '柚柚突然送来一杯冰饮，体力+15', e: 15, rel: 2, m: 6 },
+  { t: '读者夸你编的《大三年》好看，心情+8', m: 8 },
+  { t: '路边遇到一只小橘猫，心情+6', m: 6 },
+  { t: '油费涨价，-20 元', money: -20, m: -2 },
+  { t: '彩票刮出 100 元！', money: 100, m: 8 },
+  { t: '车胎被钉子扎了，补胎-80 元', money: -80, m: -6 },
+  { t: '晚上星空超好看，心情+5', m: 5 }
+];
+
+var COHABIT_EVENTS = [
+  { t: '柚柚做了爱心早餐，体力+10，心情+5', e: 10, m: 5 },
+  { t: '柚柚帮你整理好衣服，心情+4，关系+3', m: 4, rel: 3 },
+  { t: '晚上柚柚弹了一首曲子，心情+6，关系+4', m: 6, rel: 4 },
+  { t: '两人抢遥控器，最后一起看动画片，心情+3', m: 3 }
+];
+
+var PAL = {
+  skin: '#ffd9b3', hair: '#3b2a20', eye: '#1d2430',
+  shirt: '#7ec850', pants: '#4a5d8c', shoes: '#5b3a29',
+  yHair: '#8a5a33', dress: '#f49bc1', yShoes: '#e0528a'
+};
+
+var SUANSUAN = [
+  '....HHHH....',
+  '....HHHH....',
+  '...HHHHHH...',
+  '...HSSSSH...',
+  '...HSSSSH...',
+  '..HSSSSSSH..',
+  '..HSEESESH..',
+  '..HSSSSSSH..',
+  '...HGGGGH...',
+  '..HGGGGGGH..',
+  '..HGGGGGGH..',
+  '..HGPPPPGH..',
+  '...HPPPPH...',
+  '...HPPPPH...',
+  '..BBB..BBB..',
+  '............'
+];
+var YOYO = [
+  'o.........o.',
+  'oH.......Ho.',
+  '.HH.....HH..',
+  '..HSSSSSH...',
+  '..HSSSSSH...',
+  '.HSSSSSSSH..',
+  '.HSESESESH..',
+  '.HSSSSSSSH..',
+  '..HDDDDDH...',
+  '.HDDDDDDDH..',
+  '.HDDDDDDDH..',
+  '.HDDDDDDDH..',
+  '..HDDDDDH...',
+  '..HS..SHS...',
+  '.BBB..BBB...',
+  '............'
+];
+
+function px(x, y, w, h, c) {
+  ctx.fillStyle = c;
+  ctx.fillRect(x, y, w, h);
+}
+function sprite(map, sx, sy, s, palette) {
+  for (var r = 0; r < map.length; r++) {
+    var row = map[r];
+    for (var c = 0; c < row.length; c++) {
+      var ch = row[c], col = palette[ch];
+      if (col) px(sx + c * s, sy + r * s, s, s, col);
+    }
+  }
+}
+
+function newGame() {
+  return {
+    day: 1, money: 100,
+    energy: 100, mood: 80, full: 70,
+    carClean: 90, rel: 40,
+    car: 'buick', withYoyo: false,
+    ach: {}, vis: { places: {}, foods: {}, ktv: 0, ice: 0, wash: 0, drive: 0 },
+    weather: 'sunny', scene: 'title',
+    sleptInCar: false, phase: 'title',
+    lastEvent: '', fishCount: 0,
+    liveTogether: false, cohabitDays: 0
+  };
+}
+function S() { return window.__S; }
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S())); } catch (e) {}
+}
+function loadSave() {
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    var o = JSON.parse(raw);
+    var g = newGame();
+    for (var k in g) if (typeof o[k] !== 'undefined') g[k] = o[k];
+    if (!g.vis) g.vis = { places: {}, foods: {}, ktv: 0, ice: 0, wash: 0, drive: 0 };
+    if (!g.ach) g.ach = {};
+    return g;
+  } catch (e) { return null; }
+}
+
+/* ===== 音效系统（原创合成音，冒险岛风：轻快明亮的复古电子音） ===== */
+var SFX = (function() {
+  var actx = null, muted = false, musicOn = false, bgmTimer = null, nextT = 0, step = 0, noiseBuf = null;
+  try { muted = localStorage.getItem('ss-sfx-muted') === '1'; } catch (e) {}
+  try { musicOn = localStorage.getItem('ss-music-on') === '1'; } catch (e) {}
+
+  function ac() {
+    if (!actx) {
+      var AC = window.AudioContext || (window.webkitAudioContext || null);
+      if (!AC) return null;
+      actx = new AC();
+    }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, type, vol, offset, slideTo, force) {
+    var ctx = ac(); if (!ctx) return;
+    if (muted && !force) return;
+    var t0 = ctx.currentTime + (offset || 0);
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.1, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  }
+  function noise(dur, vol, freq) {
+    var ctx = ac(); if (!ctx || muted) return;
+    if (!noiseBuf) {
+      var len = Math.floor(ctx.sampleRate * 0.5);
+      noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    }
+    var src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    var f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 1100;
+    var g = ctx.createGain();
+    var t0 = ctx.currentTime;
+    g.gain.setValueAtTime(vol || 0.16, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    src.start(t0); src.stop(t0 + dur + 0.03);
+  }
+  function seq(notes, type, vol, dur, gap) {
+    for (var i = 0; i < notes.length; i++) {
+      tone(notes[i], dur || 0.12, type || 'square', vol || 0.1, i * (gap || 0.1));
+    }
+  }
+  function startMusic() {
+    var ctx = ac(); if (!ctx || bgmTimer) return;
+    step = 0; nextT = ctx.currentTime + 0.1;
+    bgmTimer = setInterval(function() {
+      var c = ac(); if (!c) return;
+      while (nextT < c.currentTime + 0.28) {
+        var n = MELODY[step % MELODY.length];
+        tone(n[0], n[1], 'triangle', 0.07, nextT - c.currentTime, undefined, true);
+        nextT += n[1] * 0.94;
+        step++;
+      }
+    }, 150);
+  }
+  function stopMusic() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
+
+  return {
+    ensure: ac,
+    isMuted: function() { return muted; },
+    isMusicOn: function() { return musicOn; },
+    toggleMute: function() {
+      muted = !muted;
+      try { localStorage.setItem('ss-sfx-muted', muted ? '1' : '0'); } catch (e) {}
+      return muted;
+    },
+    toggleMusic: function() {
+      musicOn = !musicOn;
+      try { localStorage.setItem('ss-music-on', musicOn ? '1' : '0'); } catch (e) {}
+      if (musicOn) startMusic(); else stopMusic();
+      return musicOn;
+    },
+    initMusic: function() { if (musicOn) startMusic(); },
+    click: function() { tone(660, 0.06, 'square', 0.05); },
+    coin: function() { tone(1318, 0.08, 'square', 0.09); tone(1760, 0.16, 'square', 0.09, 0.09); },
+    correct: function() { seq([523, 659, 784, 1047], 'square', 0.1, 0.12, 0.09); },
+    wrong: function() { tone(220, 0.22, 'sawtooth', 0.08, 0, 130); },
+    pop: function() { tone(420, 0.08, 'square', 0.08, 0, 820); },
+    splash: function() { noise(0.35, 0.2, 900); tone(300, 0.2, 'sine', 0.06, 0, 90); },
+    fanfare: function() { seq([523, 659, 784, 1047, 1318], 'triangle', 0.12, 0.2, 0.12); },
+    chime: function() { tone(1047, 0.3, 'triangle', 0.1); tone(1568, 0.4, 'triangle', 0.08, 0.12); },
+    ktv: function() { seq([659, 784, 880, 784, 880, 1047, 880, 784], 'triangle', 0.09, 0.14, 0.13); }
+  };
+})();
+
+var MELODY = [
+  [523, 0.27], [659, 0.27], [784, 0.27], [659, 0.27],
+  [880, 0.27], [784, 0.27], [659, 0.27], [523, 0.27],
+  [587, 0.27], [698, 0.27], [880, 0.27], [698, 0.27],
+  [988, 0.27], [880, 0.27], [698, 0.27], [587, 0.27],
+  [523, 0.27], [659, 0.27], [784, 0.27], [1047, 0.27],
+  [880, 0.27], [784, 0.27], [659, 0.27], [587, 0.27],
+  [523, 0.27], [587, 0.27], [659, 0.27], [784, 0.27],
+  [880, 0.54], [784, 0.27], [659, 0.54]
+];
+
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function addStat(k, v) {
+  var limits = { energy: 100, mood: 100, full: 100, carClean: 100, rel: 100 };
+  S()[k] = clamp((S()[k] || 0) + v, 0, limits[k] || 999);
+}
+function addMoney(v) {
+  S().money = Math.max(0, S().money + v);
+  if (S().money >= 1000) unlock('rich');
+}
+function log(msg, cls) {
+  var d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  $('log').appendChild(d);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function logTitle(t) {
+  var d = document.createElement('div');
+  d.className = 'ev';
+  d.textContent = '◆ ' + t;
+  $('log').appendChild(d);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function unlock(id) {
+  var g = S();
+  if (g.ach[id]) return false;
+  g.ach[id] = 1;
+  SFX.fanfare();
+  var a = null;
+  for (var i = 0; i < ACH.length; i++) if (ACH[i].id === id) a = ACH[i];
+  if (a) log('🏆 成就达成：' + a.t, 'ev');
+  save();
+  return true;
+}
+function rememberPlace(p) { S().vis.places[p] = 1; }
+function rememberFood(f) { S().vis.foods[f] = 1; }
+
+function weatherNow() {
+  var w = WEATHER[0];
+  for (var i = 0; i < WEATHER.length; i++) if (WEATHER[i].id === S().weather) w = WEATHER[i];
+  return w;
+}
+function rollWeather() {
+  var r = Math.random();
+  S().weather = r < 0.5 ? 'sunny' : (r < 0.8 ? 'cloudy' : 'rain');
+}
+function rollEvent() {
+  if (Math.random() > 0.38) return;
+  var list = (S().liveTogether && Math.random() < 0.5) ? COHABIT_EVENTS : EVENTS;
+  var e = list[Math.floor(Math.random() * list.length)];
+  if (e.m) addStat('mood', e.m);
+  if (e.e) addStat('energy', e.e);
+  if (e.car) addStat('carClean', e.car);
+  if (e.rel) addStat('rel', e.rel);
+  if (e.money) addMoney(e.money);
+  if (e.money > 0) SFX.coin();
+  if (e.money < 0) SFX.wrong();
+  log('⚡ ' + e.t, e.money < 0 || (e.m && e.m < 0) ? 'bad' : 'ok');
+}
+
+function choices(list) {
+  var box = $('choices');
+  box.innerHTML = '';
+  box.className = list.length > 3 ? 'grid2' : '';
+  list.forEach(function(item) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn ' + (item.cls || '');
+    b.textContent = item.text;
+    b.onclick = function() { SFX.click(); item.fn(); };
+    box.appendChild(b);
+  });
+}
+function setScene(name) {
+  S().scene = name;
+  draw();
+}
+function renderTop() {
+  $('dayNum').textContent = S().day;
+  $('moneyNum').textContent = S().money;
+  $('weatherLabel').textContent = weatherNow().ico + ' ' + weatherNow().name;
+  $('carLabel').textContent = S().car === 'bao5' ? '🚙 豹5' : '🚗 小别克';
+}
+function renderStats() {
+  var map = [
+    ['energy', '⚡体力', 'b-energy'],
+    ['mood', '😊心情', 'b-mood'],
+    ['full', '🍚饱腹', 'b-full'],
+    ['carClean', '🚿车况', 'b-car'],
+    ['rel', '💕柚柚', 'b-rel'],
+    ['money', '💰存款', 'b-money']
+  ];
+  var html = '';
+  map.forEach(function(m) {
+    var v = S()[m[0]];
+    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span><span>' + Math.round(v) + '</span></div>' +
+      '<div class="bar"><i style="width:' + v + '%"></i></div></div>';
+  });
+  $('stats').innerHTML = html;
+}
+function draw() {
+  renderTop(); renderStats();
+  ctx.clearRect(0, 0, 360, 240);
+  drawBg();
+  switch (S().scene) {
+    case 'title': drawTitle(); break;
+    case 'home': drawHome(); break;
+    case 'office': drawOffice(); break;
+    case 'park': drawPark(); break;
+    case 'mountain': drawMountain(); break;
+    case 'lake': drawLake(); break;
+    case 'car': drawCarInside(); break;
+    case 'carout': drawCarOutside(); break;
+    case 'wash': drawWash(); break;
+    case 'sleep': drawSleep(); break;
+    case 'road': drawRoad(); break;
+  }
+}
+function drawBg() {
+  var w = S().weather;
+  var sky = w === 'rain' ? '#7b8ba3' : (w === 'cloudy' ? '#a9c6e8' : '#87ceeb');
+  px(0, 0, 360, 240, sky);
+  if (w !== 'rain') {
+    px(40, 22, 26, 26, '#ffe08a');       // sun
+    px(44, 18, 18, 8, '#ffe08a');
+    px(50, 14, 6, 18, '#ffe08a');
+    px(300, 30, 34, 10, '#ffffff');
+    px(270, 52, 26, 8, '#ffffff');
+  } else {
+    px(50, 30, 3, 12, '#a8c8e8'); px(70, 46, 3, 10, '#a8c8e8');
+    px(280, 26, 3, 12, '#a8c8e8'); px(310, 60, 3, 10, '#a8c8e8');
+  }
+}
+function drawTitle() {
+  px(0, 160, 360, 80, '#8ecf6a');
+  px(0, 178, 360, 4, '#6db04f');
+  sprite(SUANSUAN, 110, 78, 4, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+  sprite(YOYO, 210, 78, 4, {
+    H: PAL.yHair, S: PAL.skin, E: PAL.eye,
+    D: PAL.dress, B: PAL.yShoes
+  });
+  ctx.fillStyle = '#3d2b1a';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('酸酸的一天', 180, 46);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#5a4632';
+  ctx.fillText('能不能多关心我一下', 180, 64);
+}
+function drawHome() {
+  px(0, 130, 360, 110, '#31415a');
+  px(0, 150, 360, 3, '#232f42');
+  var xs = [20, 70, 120, 170, 220, 270, 310];
+  for (var i = 0; i < xs.length; i++) {
+    var x = xs[i], h = 45 + (i % 3) * 14;
+    px(x, 150 - h, 34, h, i % 2 ? '#4b5f7d' : '#42566f');
+    px(x + 11, 150 - h + 8, 10, 8, '#ffd166');
+  }
+  px(150, 64, 60, 40, '#f0c98a');
+  px(150, 64, 60, 8, '#d9a95f');
+  px(178, 82, 8, 10, '#5b3a29');
+  px(172, 92, 16, 12, '#e8a3a3');
+  px(150, 104, 60, 26, '#c98a4b');
+  sprite(SUANSUAN, 258, 96, 3, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+  if (S().liveTogether) {
+    sprite(YOYO, 294, 96, 3, {
+      H: PAL.yHair, S: PAL.skin, E: PAL.eye,
+      D: PAL.dress, B: PAL.yShoes
+    });
+  }
+}
+function drawOffice() {
+  px(0, 120, 360, 120, '#d8c9a8');
+  px(0, 140, 360, 4, '#b7a681');
+  px(30, 40, 70, 42, '#9fc3e8');
+  px(34, 44, 16, 12, '#dff0ff');
+  px(34, 62, 16, 12, '#dff0ff');
+  px(58, 44, 16, 12, '#dff0ff');
+  px(58, 62, 16, 12, '#dff0ff');
+  px(50, 150, 90, 34, '#8a6242');
+  px(52, 144, 12, 6, '#6e4c30');
+  px(120, 144, 12, 6, '#6e4c30');
+  px(64, 148, 62, 4, '#a06c46');
+  px(150, 150, 40, 40, '#6f7d95');
+  px(152, 152, 36, 20, '#33415c');
+  sprite(SUANSUAN, 208, 116, 4, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+  px(240, 120, 90, 30, '#c9b28a');
+  px(246, 116, 16, 4, '#6e4c30');
+}
+function drawPark() {
+  px(0, 140, 360, 100, '#8ecf6a');
+  px(30, 30, 30, 56, '#5f9e4f');
+  px(38, 20, 14, 18, '#7ec85e');
+  px(24, 40, 42, 10, '#7ec85e');
+  px(300, 40, 30, 52, '#5f9e4f');
+  px(308, 28, 14, 16, '#7ec85e');
+  px(150, 168, 60, 6, '#e8d9b8');
+  px(120, 200, 30, 20, '#f0a9c8');
+  px(125, 194, 20, 8, '#e88fb0');
+  px(240, 210, 40, 14, '#6db0d8');
+  sprite(SUANSUAN, 80, 150, 4, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+}
+function drawMountain() {
+  px(0, 120, 360, 120, '#8ecf6a');
+  px(0, 130, 360, 8, '#6db04f');
+  px(60, 80, 100, 80, '#7fae6a');
+  px(150, 110, 110, 50, '#8bbf74');
+  px(220, 74, 100, 86, '#79a864');
+  px(0, 130, 360, 30, '#9fcf7c');
+  px(150, 180, 70, 6, '#e8d9b8');
+  px(158, 186, 22, 12, '#e8a3a3');
+  px(196, 186, 22, 12, '#e8a3a3');
+  px(150, 196, 70, 18, '#d8c9a8');
+  px(140, 170, 26, 16, '#a06c46');
+  sprite(SUANSUAN, 190, 158, 4, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+}
+function drawLake() {
+  px(0, 110, 360, 130, '#6db0d8');
+  px(0, 108, 360, 4, '#dff0ff');
+  px(0, 150, 360, 3, '#9fd0ea');
+  px(40, 170, 20, 4, '#c8e8f8');
+  px(200, 140, 24, 4, '#c8e8f8');
+  px(0, 170, 360, 70, '#8ecf6a');
+  px(20, 150, 22, 22, '#5f9e4f');
+  px(340, 160, 20, 18, '#5f9e4f');
+  sprite(SUANSUAN, 290, 168, 4, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+  px(260, 172, 34, 3, '#8a6242');
+  px(292, 174, 3, 18, '#8a6242');
+}
+function drawCarInside() {
+  px(0, 0, 360, 240, '#3d4a5e');
+  px(30, 46, 300, 150, '#e9edf3');
+  px(30, 46, 300, 26, '#cfd7e3');
+  px(42, 86, 120, 12, '#b8c4d4');
+  px(200, 86, 120, 12, '#b8c4d4');
+  px(70, 108, 90, 60, '#5b6c84');
+  px(205, 108, 90, 60, '#5b6c84');
+  sprite(SUANSUAN, 82, 84, 4, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+  if (S().withYoyo) {
+    sprite(YOYO, 218, 84, 4, {
+      H: PAL.yHair, S: PAL.skin, E: PAL.eye,
+      D: PAL.dress, B: PAL.yShoes
+    });
+  }
+  px(40, 176, 120, 14, '#2e3a4d');
+  px(205, 176, 120, 14, '#2e3a4d');
+}
+function drawCarOutside() {
+  px(0, 150, 360, 90, '#5a6675');
+  px(0, 150, 360, 4, '#44505f');
+  if (S().car === 'bao5') {
+    px(70, 96, 220, 54, '#a8d68a');
+    px(70, 96, 220, 14, '#8fc173');
+    px(96, 78, 44, 24, '#bfe8a4');
+    px(160, 78, 44, 24, '#bfe8a4');
+    px(224, 78, 44, 24, '#bfe8a4');
+    px(88, 146, 26, 26, '#2a2f38');
+    px(118, 146, 26, 26, '#2a2f38');
+    px(216, 146, 26, 26, '#2a2f38');
+    px(246, 146, 26, 26, '#2a2f38');
+    px(70, 150, 220, 6, '#7aa862');
+  } else {
+    px(80, 104, 200, 46, '#f0f2f5');
+    px(80, 104, 200, 12, '#d8dde4');
+    px(106, 88, 40, 22, '#cfe4f5');
+    px(156, 88, 40, 22, '#cfe4f5');
+    px(206, 88, 40, 22, '#cfe4f5');
+    px(96, 146, 24, 24, '#2a2f38');
+    px(128, 146, 24, 24, '#2a2f38');
+    px(216, 146, 24, 24, '#2a2f38');
+    px(248, 146, 24, 24, '#2a2f38');
+  }
+}
+function drawWash() {
+  px(0, 130, 360, 110, '#9fb2c8');
+  px(0, 150, 360, 4, '#7e93ab');
+  if (S().car === 'bao5') {
+    px(80, 86, 200, 46, '#bfe8a4');
+    px(96, 70, 40, 20, '#d6f2c2');
+    px(220, 70, 40, 20, '#d6f2c2');
+    px(96, 128, 24, 22, '#2a2f38');
+    px(240, 128, 24, 22, '#2a2f38');
+  } else {
+    px(90, 94, 180, 40, '#ffffff');
+    px(112, 80, 36, 18, '#dcecf9');
+    px(210, 80, 36, 18, '#dcecf9');
+    px(104, 130, 22, 20, '#2a2f38');
+    px(234, 130, 22, 20, '#2a2f38');
+  }
+  for (var i = 0; i < 8; i++) {
+    var bx = 30 + i * 40, by = 60 + (i % 3) * 20;
+    px(bx, by, 8, 8, '#cfe9ff');
+    px(bx + 2, by - 2, 4, 4, '#e7f6ff');
+  }
+}
+function drawSleep() {
+  px(0, 0, 360, 240, '#232a3a');
+  px(0, 150, 360, 90, '#1c2230');
+  px(80, 100, 200, 70, '#3d4a5e');
+  px(80, 100, 200, 14, '#53627a');
+  px(90, 130, 180, 26, '#e8ecf2');
+  sprite(SUANSUAN, 170, 96, 3, {
+    H: PAL.hair, S: PAL.skin, E: PAL.eye,
+    G: PAL.shirt, P: PAL.pants, B: PAL.shoes
+  });
+  px(250, 80, 16, 16, '#ffd166');
+  px(60, 60, 10, 10, '#ffd166');
+}
+function drawRoad() {
+  px(0, 140, 360, 100, '#5a6675');
+  px(0, 140, 360, 6, '#44505f');
+  for (var i = 0; i < 9; i++) px(i * 44 + 8, 190, 18, 4, '#e8d06a');
+  if (S().car === 'bao5') {
+    px(80, 92, 200, 48, '#a8d68a');
+    px(104, 74, 40, 22, '#bfe8a4');
+    px(216, 74, 40, 22, '#bfe8a4');
+    px(96, 136, 24, 22, '#2a2f38');
+    px(240, 136, 24, 22, '#2a2f38');
+  } else {
+    px(90, 100, 180, 40, '#f0f2f5');
+    px(112, 84, 36, 20, '#cfe4f5');
+    px(212, 84, 36, 20, '#cfe4f5');
+    px(104, 136, 22, 20, '#2a2f38');
+    px(234, 136, 22, 20, '#2a2f38');
+  }
+}
+
+function showChoicesOf(phase) {
+  var g = S();
+  switch (phase) {
+    case 'morning':
+      logTitle('第 ' + g.day + ' 天 · ' + (g.withYoyo ? '今天柚柚和你一起' : '一个人出发'));
+      morningChoicesUI();
+      break;
+    case 'playPlace':
+      choices([
+        { text: '🌳 公园散步', cls: 'green', fn: function() { parkWalk(); } },
+        { text: '⛰️ 山上野餐', cls: 'orange', fn: function() { mountainPicnic(); } },
+        { text: '🎣 湖边钓鱼', cls: 'blue', fn: function() { startFishing(); } },
+        { text: '↩️ 还是去上班吧', cls: 'gray', fn: startWork }
+      ]);
+      break;
+    case 'lunch':
+      choices([
+        { text: '🍢 川川烧烤（30元）', cls: 'orange', fn: function() { eat('bbq'); } },
+        { text: '🍗 鸭腿饭（18元）', cls: 'green', fn: function() { eat('duck'); } },
+        { text: '🍲 瓦尔登湖草本汤（22元）', cls: 'blue', fn: function() { eat('soup'); } },
+        { text: '🏠 家里做', cls: 'gray', fn: function() { eat('home'); } },
+        { text: '🍳 去柚柚家做饭', cls: 'pink', fn: function() { eat('yoyo'); } }
+      ]);
+      break;
+    case 'drive':
+      choices([
+        { text: '🎤 自己K歌', cls: 'green', fn: function() { carAct('selfktv'); } },
+        { text: '🎶 柚柚K歌', cls: 'pink', fn: function() { carAct('yoyoktv'); } },
+        { text: '😶 发呆', cls: 'gray', fn: function() { carAct('zone'); } },
+        { text: '😤 吵架', cls: 'orange', fn: function() { carAct('fight'); } }
+      ]);
+      break;
+    case 'carSleep':
+      choices([
+        { text: '😴 睡在豹5上（不回瓦尔登湖的家）', cls: 'green', fn: function() { sleepInCar(); } },
+        { text: '🚗 开回瓦尔登湖的家', cls: 'gray', fn: function() { goHomeNight(); } }
+      ]);
+      break;
+    case 'wash':
+      choices([
+        { text: '🚿 洗车（30元）', cls: 'blue', fn: function() { washCar(); } },
+        { text: '🙅 不洗了', cls: 'gray', fn: function() { afterWash(); } }
+      ]);
+      break;
+    case 'night':
+      var nightChoices = [
+        { text: '🛌 睡觉，迎接明天', cls: 'green', fn: function() { sleep(); } },
+        { text: '🏆 看看成就', cls: 'gray', fn: showAch }
+      ];
+      if (g.liveTogether) {
+        nightChoices.push({ text: '💕 和柚柚过夜生活', cls: 'pink', fn: cohabitMenu });
+      }
+      if (g.car === 'buick' && g.money >= 2000) {
+        nightChoices.push({ text: '🚙 买豹5浅绿色（2000元）', cls: 'orange', fn: buyBao5 });
+      }
+      choices(nightChoices);
+      break;
+    case 'sleep':
+      choices([
+        { text: '☀️ 新的一天！', cls: 'green', fn: nextDay }
+      ]);
+      break;
+    default:
+      choices([]);
+  }
+}
+function morningChoicesUI() {
+  var g = S();
+  var arr = [
+    { text: '💼 上班（去川川出版社）', cls: 'green', fn: startWork },
+    { text: '🎒 出去玩', cls: 'pink', fn: choosePlay }
+  ];
+  if (!g.liveTogether) {
+    if (!g.withYoyo) {
+      arr.push({ text: '👩 叫上柚柚一起', cls: 'orange', fn: function() {
+        g.withYoyo = true;
+        addStat('rel', 2);
+        log('你打电话给柚柚，她开心地上了车，关系 +2', 'ok');
+        setScene('car');
+        morningChoicesUI();
+      } });
+    } else {
+      arr.push({ text: '👋 今天不带柚柚', cls: 'gray', fn: function() {
+        g.withYoyo = false;
+        log('柚柚今天有安排，你自己出发', '');
+        morningChoicesUI();
+      } });
+    }
+  }
+  choices(arr);
+}
+
+function startWork() {
+  var g = S();
+  g.phase = 'work';
+  g.vis.drive++;
+  setScene('office');
+  log('你开车来到川川出版社，开始一天的工作。', '');
+  if (g.withYoyo) log('柚柚帮你整理稿件，出版社气氛都甜了～', 'ok');
+  log('先把这几道口算题做完吧！答对一题多赚 12 元。', '');
+  workQ(0, 0);
+}
+function workQ(n, score) {
+  if (n >= 5) {
+    var g = S();
+    var earn = 100 + score * 12;
+    addMoney(earn);
+    addStat('energy', -12);
+    addStat('mood', g.withYoyo ? 0 : -4);
+    if (g.withYoyo) addStat('rel', 3);
+    SFX.coin();
+    log('下班啦！工资 +' + earn + ' 元（含奖励 ' + (score * 12) + ' 元）', 'ok');
+    unlock('work1');
+    if (g.withYoyo) log('柚柚说：明天还要来帮你！', 'ok');
+    afterWork();
+    return;
+  }
+  var a = 2 + Math.floor(Math.random() * 40);
+  var op = Math.random() < 0.5 ? '+' : '-';
+  var b = 1 + Math.floor(Math.random() * (op === '-' ? a : 20));
+  var ans = op === '+' ? a + b : a - b;
+  $('workQ').classList.remove('hidden');
+  $('workQ').textContent = '第 ' + (n + 1) + ' 题：' + a + ' ' + op + ' ' + b + ' = ？';
+  var inp = $('workInput');
+  inp.classList.remove('hidden');
+  inp.value = '';
+  inp.focus();
+  choices([
+    { text: '提交答案', cls: 'green', fn: function() {
+      var v = parseInt(inp.value, 10);
+      if (isNaN(v)) { log('请输入数字再提交～', 'bad'); return; }
+      if (v === ans) {
+        SFX.correct();
+        log('✅ 正确！', 'ok');
+        workQ(n + 1, score + 1);
+      } else {
+        SFX.wrong();
+        log('❌ 答错啦，答案是 ' + ans, 'bad');
+        workQ(n + 1, score);
+      }
+    } }
+  ]);
+}
+function afterWork() {
+  S().phase = 'lunch';
+  setScene('office');
+  logTitle('下班了，吃什么？');
+  showChoicesOf('lunch');
+}
+
+function choosePlay() {
+  S().phase = 'playPlace';
+  rememberPlace('play');
+  S().vis.drive++;
+  setScene('home');
+  log('你决定今天不打工！去哪儿玩呢？', '');
+  showChoicesOf('playPlace');
+}
+function parkWalk() {
+  var g = S();
+  g.phase = 'lunch';
+  rememberPlace('park');
+  addStat('mood', 12);
+  addStat('energy', -8);
+  setScene('park');
+  log('在公园里慢慢走，风吹过来，心情 +12', 'ok');
+  if (Math.random() < 0.45) {
+    addStat('rel', 8);
+    log('偶遇柚柚！她陪你走了一圈，关系 +8', 'ok');
+    g.withYoyo = true;
+  }
+  unlock('play1');
+  logTitle('玩了一会儿，肚子饿了，吃什么？');
+  showChoicesOf('lunch');
+}
+function mountainPicnic() {
+  var g = S();
+  g.phase = 'lunch';
+  rememberPlace('mountain');
+  if (g.money < 20) {
+    log('钱不够买野餐垫和零食，只好在草地坐坐，心情 +6', 'ok');
+    addStat('mood', 6);
+    addStat('energy', -10);
+  } else {
+    addMoney(-20);
+    addStat('mood', 15);
+    addStat('energy', -12);
+    log('在山上铺开野餐垫，吃了零食，花了 20 元，心情 +15', 'ok');
+    if (g.withYoyo) { addStat('rel', 5); log('柚柚坐在垫子上，关系 +5', 'ok'); }
+    unlock('picnic');
+  }
+  unlock('play1');
+  setScene('mountain');
+  logTitle('野餐结束，下山吃饭去，吃什么？');
+  showChoicesOf('lunch');
+}
+
+function startFishing() {
+  var g = S();
+  g.phase = 'fish';
+  rememberPlace('lake');
+  setScene('lake');
+  log('湖边风很舒服。看准时机点“收杆”！', '');
+  var bar = document.createElement('div');
+  bar.id = 'fishing';
+  bar.innerHTML = '<div class="zone" style="left:28%;width:26%"></div><div class="needle" style="left:50%"></div>';
+  $('choices').innerHTML = '';
+  $('choices').appendChild(bar);
+  var stop = document.createElement('button');
+  stop.type = 'button';
+  stop.className = 'btn green';
+  stop.textContent = '🎣 收杆！';
+  $('choices').appendChild(stop);
+  var pos = 0, dir = 1, raf = null;
+  var needle = bar.querySelector('.needle');
+  function tick() {
+    pos += dir * 2.6;
+    if (pos > 96) { pos = 96; dir = -1; }
+    if (pos < 0) { pos = 0; dir = 1; }
+    needle.style.left = pos + '%';
+    raf = requestAnimationFrame(tick);
+  }
+  raf = requestAnimationFrame(tick);
+  stop.onclick = function() {
+    cancelAnimationFrame(raf);
+    var inZone = pos >= 28 && pos <= 54;
+    if (inZone) {
+      var size = Math.random();
+      var price = size < 0.5 ? 20 : (size < 0.8 ? 35 : 60);
+      addMoney(price);
+      g.fishCount++;
+      addStat('mood', 10);
+      addStat('energy', -10);
+      SFX.splash();
+      SFX.coin();
+      log('🐟 上钩了！卖鱼得 ' + price + ' 元，心情 +10', 'ok');
+      unlock('fish1');
+    } else {
+      addStat('mood', -3);
+      SFX.wrong();
+      log('鱼跑了……下次看准绿色区域再收杆，心情 -3', 'bad');
+    }
+    $('choices').innerHTML = '';
+    unlock('play1');
+    logTitle('钓完鱼，去吃饭，吃什么？');
+    S().phase = 'lunch';
+    showChoicesOf('lunch');
+  };
+}
+
+function eat(kind) {
+  var g = S();
+  g.phase = 'drive';
+  rememberFood(kind);
+  SFX.pop();
+  setScene('home');
+  switch (kind) {
+    case 'bbq':
+      addMoney(-30);
+      addStat('full', 38);
+      addStat('mood', 12);
+      log('川川烧烤香喷喷！饱腹 +38，心情 +12（-30元）', 'ok');
+      break;
+    case 'duck':
+      addMoney(-18);
+      addStat('full', 30);
+      addStat('mood', 6);
+      log('鸭腿饭管饱又实惠！饱腹 +30（-18元）', 'ok');
+      break;
+    case 'soup':
+      addMoney(-22);
+      addStat('full', 24);
+      addStat('energy', 12);
+      addStat('mood', 7);
+      log('一碗热乎乎的瓦尔登湖草本汤，身体都暖了（-22元）', 'ok');
+      break;
+    case 'home':
+      addStat('full', 18);
+      addStat('energy', -6);
+      log('在家随便煮了点吃的，饱腹 +18', '');
+      break;
+    case 'yoyo':
+      addStat('full', 28);
+      addStat('rel', 10);
+      addStat('mood', 10);
+      log('去柚柚家做饭！她做了冰饮料，体力 +15，关系 +10', 'ok');
+      addStat('energy', 15);
+      g.vis.ice++;
+      if (g.vis.ice >= 5) unlock('ice5');
+      g.withYoyo = true;
+      break;
+  }
+  logTitle('吃饱了，开车回瓦尔登湖的家（也可以做点别的）');
+  setScene('car');
+  showChoicesOf('drive');
+}
+
+function carAct(act) {
+  var g = S();
+  var base = '你坐在' + (g.car === 'bao5' ? '豹5' : '小别克') + '里';
+  switch (act) {
+    case 'selfktv':
+      addStat('mood', 8);
+      addStat('energy', -4);
+      g.vis.ktv++;
+      SFX.ktv();
+      log(base + '，自己举着麦克风飙高音！心情 +8', 'ok');
+      if (g.withYoyo) { addStat('mood', 4); log('柚柚在旁边给你鼓掌，关系 +3', 'ok'); addStat('rel', 3); }
+      if (g.vis.ktv >= 5) unlock('ktv5');
+      break;
+    case 'yoyoktv':
+      if (g.withYoyo) {
+        addStat('mood', 10);
+        addStat('rel', 5);
+        g.vis.ktv++;
+        SFX.ktv();
+        log('柚柚唱了一首甜甜的歌，你边开车边笑，关系 +5', 'ok');
+        if (g.vis.ktv >= 5) unlock('ktv5');
+      } else {
+        addStat('mood', 3);
+        log('你想听柚柚唱歌，可惜她今天没来，放首歌也行，心情 +3', '');
+      }
+      break;
+    case 'zone':
+      addStat('mood', -3);
+      log(base + '，望着窗外发呆，脑子里什么也没想，心情 -3', '');
+      break;
+    case 'fight':
+      SFX.wrong();
+      if (g.withYoyo) {
+        addStat('rel', -12);
+        addStat('mood', -6);
+        log('因为空调温度吵起来了！关系 -12，心情 -6', 'bad');
+        unlock('fight1');
+        if (Math.random() < 0.4) {
+          addStat('rel', 8);
+          addStat('mood', 4);
+          log('到了家楼下，柚柚把冰饮料塞给你，算是和好啦，关系 +8', 'ok');
+        }
+      } else {
+        addStat('mood', -2);
+        log('一个人对着方向盘生闷气，心情 -2', 'bad');
+      }
+      break;
+  }
+  S().phase = 'carEnd';
+  setScene('carout');
+  if (g.car === 'bao5') {
+    logTitle('天快黑了。豹5可以当床睡哦');
+    S().phase = 'carSleep';
+    showChoicesOf('carSleep');
+  } else {
+    goHomeNight();
+  }
+}
+function sleepInCar() {
+  var g = S();
+  g.sleptInCar = true;
+  addStat('carClean', -5);
+  addStat('energy', 25);
+  addStat('mood', 10);
+  addMoney(20);
+  SFX.chime();
+  log('把豹5后排放倒，躺在车里看星星，省了回家的油钱 20 元', 'ok');
+  log('第二天起来精神特别好！体力 +25，心情 +10', 'ok');
+  unlock('sleepcar');
+  afterWashFlow();
+}
+function goHomeNight() {
+  addStat('energy', 12);
+  log('开车回到瓦尔登湖的家，冲个澡，体力 +12', '');
+  afterWashFlow();
+}
+function afterWashFlow() {
+  var g = S();
+  g.phase = 'wash';
+  setScene('home');
+  if (g.carClean < 50) {
+    logTitle('车有点脏了（车况 ' + Math.round(g.carClean) + '），要洗吗？');
+    showChoicesOf('wash');
+  } else {
+    washSkip();
+  }
+}
+function washCar() {
+  var g = S();
+  if (g.money < 30) {
+    log('钱不够洗车（30元），只好自己擦擦，车况 +10', '');
+    addStat('carClean', 10);
+    afterWash();
+    return;
+  }
+  addMoney(-30);
+  addStat('carClean', 100);
+  addStat('mood', 3);
+  g.vis.wash++;
+  if (g.vis.wash >= 3) unlock('wash3');
+  log('洗车店把车洗得锃亮！车况满格（-30元）', 'ok');
+  setScene('wash');
+  afterWash();
+}
+function afterWash() {
+  logTitle('一天结束了，晚上做什么？');
+  showNight();
+}
+function showNight() {
+  S().phase = 'night';
+  setScene('home');
+  showChoicesOf('night');
+}
+function washSkip() { afterWash(); }
+
+function cohabitMenu() {
+  setScene('home');
+  choices([
+    { text: '🍳 一起做夜宵', cls: 'orange', fn: function() { cohabitAct('cook'); } },
+    { text: '📺 窝沙发看剧', cls: 'blue', fn: function() { cohabitAct('tv'); } },
+    { text: '🌙 阳台看星星', cls: 'green', fn: function() { cohabitAct('star'); } },
+    { text: '↩️ 回去睡觉', cls: 'gray', fn: showNight }
+  ]);
+}
+function cohabitAct(kind) {
+  var g = S();
+  switch (kind) {
+    case 'cook':
+      addStat('full', 20); addStat('rel', 5); addStat('mood', 6);
+      SFX.pop();
+      log('和柚柚一起煮了碗面，她偷偷多给你加了个蛋', 'ok');
+      break;
+    case 'tv':
+      addStat('mood', 10); addStat('rel', 6);
+      SFX.ktv();
+      log('两人窝在沙发上看剧，她靠在你肩膀上睡着了', 'ok');
+      break;
+    case 'star':
+      addStat('mood', 8); addStat('rel', 7);
+      SFX.chime();
+      log('阳台上看星星，柚柚数着星座，声音越来越小', 'ok');
+      break;
+  }
+  showNight();
+}
+function showCohabitCard() {
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>💕 新结局：住在一起</h2><p>关系达到 90，柚柚搬来和你一起住啦！</p><p>解锁同居玩法：一起做夜宵、窝沙发看剧、阳台看星星，每天早上还有爱心早餐。</p><button type="button" class="btn pink" id="cohClose">太好了！</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#cohClose').onclick = function() { SFX.click(); box.remove(); };
+}
+
+function buyBao5() {
+  var g = S();
+  if (g.money < 2000) { log('钱不够，还需要 ' + (2000 - g.money) + ' 元', 'bad'); return; }
+  addMoney(-2000);
+  g.car = 'bao5';
+  SFX.fanfare();
+  SFX.coin();
+  log('🎉 提车！浅绿色豹5到手，以后可以在车里睡觉了！', 'ok');
+  log('小别克光荣退役，感谢它陪你走过这么多天。', '');
+  unlock('bao5');
+  setScene('carout');
+  showChoicesOf('night');
+}
+
+function sleep() {
+  S().phase = 'sleep';
+  setScene('sleep');
+  var g = S();
+  if (!g.liveTogether && g.rel >= 90) {
+    g.liveTogether = true;
+    g.cohabitDays = 1;
+    g.withYoyo = true;
+    SFX.fanfare();
+    unlock('cohabit');
+    showCohabitCard();
+    log('💕 柚柚红着脸说：我想搬来和你一起住……', 'ok');
+  }
+  rollEvent();
+  if (g.energy <= 0) {
+    addStat('energy', 60);
+    log('你太累了，直接睡到第二天中午，体力恢复 +60', '');
+  } else {
+    addStat('energy', 35);
+    addStat('full', -25);
+    log('睡了个好觉，体力 +35', 'ok');
+  }
+  if (g.carClean < 25) log('车太脏了，明天抽空洗一洗吧', 'bad');
+  showChoicesOf('sleep');
+}
+function nextDay() {
+  var g = S();
+  g.day++;
+  SFX.chime();
+  g.withYoyo = g.withYoyo && Math.random() < 0.75;
+  if (g.liveTogether) {
+    g.withYoyo = true;
+    g.cohabitDays++;
+    addStat('energy', 5);
+    addStat('mood', 3);
+    log('和柚柚一起住的家，早餐都更香了！体力+5，心情+3', 'ok');
+    if (g.cohabitDays >= 10) unlock('cohabit10');
+  }
+  if (g.sleptInCar) g.sleptInCar = false;
+  if (g.car === 'buick') addStat('carClean', -8);
+  else addStat('carClean', -12);
+  addStat('full', -15);
+  rollWeather();
+  if (g.rel >= 90) unlock('love');
+  if (g.vis.drive >= 10) unlock('drive10');
+  g.phase = 'morning';
+  setScene('road');
+  if (g.carClean < 30) log('🚨 车脏得不行了，今天记得洗车！', 'bad');
+  showChoicesOf('morning');
+}
+
+function showAch() {
+  var html = '';
+  ACH.forEach(function(a) {
+    var done = !!S().ach[a.id];
+    html += '<div class="ach' + (done ? ' done' : '') + '"><div class="t">' + (done ? '✅ ' : '🔒 ') + a.t + '</div><div class="d">' + a.d + '</div></div>';
+  });
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>🏆 成就（' + Object.keys(S().ach).length + '/' + ACH.length + '）</h2><div id="achList">' + html + '</div><br><button type="button" class="btn green" id="achClose">返回</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#achClose').onclick = function() { SFX.click(); box.remove(); };
+}
+
+function startScreen() {
+  S().phase = 'title';
+  setScene('title');
+  $('log').innerHTML = '';
+  logTitle('欢迎来到《酸酸的一天》');
+  log('你住在瓦尔登湖，是川川出版社的老板。每天开车上班或出去玩，吃饭、K歌、钓鱼，还能和柚柚一起。', '');
+  log('代表作《大三年》最近卖得不错，签名版都断货了。', '');
+  log('攒够 2000 元就能换浅绿色豹5，还能睡在车里哦！', '');
+  log('把柚柚好感刷到 90，还能触发"住在一起"结局，解锁同居玩法！', '');
+  choices([
+    { text: '🌟 新的开始', cls: 'green', fn: function() { startNew(); } },
+    { text: '📂 继续游戏', cls: 'blue', fn: function() {
+      var s = loadSave();
+      if (s) { window.__S = s; beginDay(); }
+      else { log('没有存档，先开始新游戏吧', 'bad'); }
+    } }
+  ]);
+}
+function startNew() {
+  window.__S = newGame();
+  SFX.chime();
+  SFX.initMusic();
+  beginDay();
+}
+function beginDay() {
+  S().phase = 'morning';
+  rollWeather();
+  setScene('road');
+  $('log').innerHTML = '';
+  showChoicesOf('morning');
+}
+
+function renderSndBtns() {
+  $('sfxBtn').textContent = SFX.isMuted() ? '🔇 音效关' : '🔊 音效开';
+  $('musicBtn').textContent = SFX.isMusicOn() ? '🎵 背景开' : '🎵 背景关';
+}
+$('sfxBtn').onclick = function() { SFX.toggleMute(); renderSndBtns(); };
+$('musicBtn').onclick = function() { SFX.toggleMusic(); renderSndBtns(); };
+renderSndBtns();
+
+window.__S = loadSave() || newGame();
+startScreen();
+window.addEventListener('beforeunload', save);
+</script>
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-title">酸酸的一天</div>
+    <div class="gate-sub">私人入口 · 请输入访问口令</div>
+    <input id="gatePwd" type="password" placeholder="访问口令" autocomplete="off">
+    <button type="button" id="gateBtn">进 入</button>
+    <div id="gateErr">口令不对哦，再想想～</div>
+  </div>
+</div>
+<style>
+  #gate {
+    position: fixed; inset: 0; z-index: 999;
+    background: #1d2430;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .gate-box {
+    width: calc(100% - 64px); max-width: 320px;
+    background: #262f3d; border: 4px solid #ffd166; border-radius: 18px;
+    padding: 24px 20px; text-align: center;
+  }
+  .gate-title { font-size: 24px; font-weight: 800; color: #ffd166; letter-spacing: 4px; }
+  .gate-sub { font-size: 13px; color: #b9c4d4; margin: 8px 0 18px; }
+  #gatePwd {
+    width: 100%; min-height: 46px; font-size: 18px; text-align: center;
+    background: #1d2430; color: #ffd166; border: 3px solid #48566b;
+    border-radius: 12px; box-sizing: border-box; outline: none;
+  }
+  #gateBtn {
+    width: 100%; min-height: 46px; margin-top: 12px;
+    background: #3f9e5f; color: #fff; border: 3px solid #66c484;
+    border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  #gateBtn:active { transform: translateY(2px); }
+  #gateErr { display: none; color: #ff8fa3; font-size: 13px; margin-top: 12px; }
+</style>
+<script>
+(function() {
+  var HASH = '5a0eb78500417e9f4608beeb8985bb06a72175f13590d0580b202cdb19f299b7';
+  function sha(s) {
+    if (window.crypto && crypto.subtle) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function(buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function(x) {
+          return ('0' + x.toString(16)).slice(-2);
+        }).join('');
+      });
+    }
+    return Promise.resolve(null);
+  }
+  function unlock() {
+    var g = document.getElementById('gate');
+    if (g && g.remove) g.remove();
+    else if (g && g.parentNode) g.parentNode.removeChild(g);
+  }
+  function check() {
+    var v = document.getElementById('gatePwd').value.trim();
+    sha(v).then(function(h) {
+      var good = h ? (h === HASH) : (v === 'suan3366');
+      if (good) {
+        unlock();
+      } else {
+        document.getElementById('gateErr').style.display = 'block';
+        document.getElementById('gatePwd').value = '';
+        document.getElementById('gatePwd').focus();
+      }
+    });
+  }
+  document.getElementById('gateBtn').addEventListener('click', check);
+  document.getElementById('gatePwd').addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter') check();
+  });
+  document.getElementById('gatePwd').focus();
+})();
+</script>
+</body>
+</html>

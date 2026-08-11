@@ -476,7 +476,7 @@ function newGame() {
     routes: {}, uglyCount: 0, handsomeCount: 0, askedYoyo: false, theme: 'default',
     tickets: {}, freeParking: 0, kingDay: 0,
     charm: 5, luck: 5, iq: 5,
-    office: false, employees: [], applicant: null, payrollCount: 0, btc: null
+    office: false, employees: [], applicant: null, applicantDone: false, payrollCount: 0, btc: null
   };
   for (var i = 0; i < 3; i++) g.employees.push(makeEmployee());
   return g;
@@ -1371,13 +1371,15 @@ function afterWork() {
   var g = S();
   g.phase = 'lunch';
   setScene('office');
-  if (!g.applicant && Math.random() < 0.45) g.applicant = makeEmployee();
+  if (!g.applicant && !g.applicantDone && Math.random() < 0.45) g.applicant = makeEmployee();
+  g.applicantDone = false;
   if (g.applicant) {
     log('📋 有人来应聘：' + g.applicant.name + '，要求工资 ' + g.applicant.salary + ' 元/10天', '');
     choices([
       { text: '✅ 招聘 ' + g.applicant.name, cls: 'green', fn: hireApplicant },
       { text: '❌ 婉拒', cls: 'gray', fn: function() {
         g.applicant = null;
+        g.applicantDone = true;
         log('你婉拒了应聘者，他叹了口气走了', '');
         afterWork();
       } },
@@ -1402,6 +1404,7 @@ function hireApplicant() {
   var a = g.applicant;
   g.employees.push(a);
   g.applicant = null;
+  g.applicantDone = true;
   SFX.coin();
   log('🎉 ' + a.name + ' 入职了！', 'ok');
   if (a.name === '马云' || a.name === '马化腾' || a.name === '雷军') log('🧐 这名字……总感觉在哪里见过？', '');

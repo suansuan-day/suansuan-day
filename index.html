@@ -798,6 +798,7 @@ function renderStats() {
     ['money', '💰存款', 0]
   ];
   var html = '';
+  var barCls = { energy: 'b-energy', mood: 'b-mood', full: 'b-full', carClean: 'b-car', rel: 'b-rel' };
   map.forEach(function(m) {
     var v = S()[m[0]];
     if (m[2] === 0) {
@@ -805,10 +806,10 @@ function renderStats() {
       return;
     }
     var pct = Math.max(0, Math.min(100, v / m[2] * 100));
-    var low = pct < 60 ? ' low' : '';
     var hearts = (m[0] === 'rel' && v >= 520) ? ' hearts' : '';
-    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span></div>' +
-      '<div class="bar"><i class="' + low + hearts + '" style="width:' + pct + '%"></i></div></div>';
+    var low = (pct < 60 && !hearts) ? ' low' : '';
+    html += '<div class="stat"><div class="label"><span>' + m[1] + '</span><span>' + Math.round(v) + '</span></div>' +
+      '<div class="bar ' + (barCls[m[0]] || '') + '"><i class="' + low + hearts + '" style="width:' + pct + '%"></i></div></div>';
   });
   $('stats').innerHTML = html;
 }

@@ -66,6 +66,9 @@
   .b-car i { background: #7ee0e8; }
   .b-rel i { background: #f49bc1; }
   .b-money i { background: #7ee081; }
+  .b-charm i { background: #c9a0ff; }
+  .b-luck i { background: #8fd07e; }
+  .b-iq i { background: #7ec8ee; }
   .bar i.low { background: #ff5d5d !important; }
   .bar i.hearts {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M4 7C2.5 5.8 1 4.7 1 3.2 1 2.2 1.8 1.4 2.8 1.4c.5 0 1 .2 1.2.7l.1.1.1-.1c.3-.5.7-.7 1.2-.7C6.2 1.4 7 2.2 7 3.2 7 4.7 5.5 5.8 4 7z' fill='%23ff8fa3'/></svg>");
@@ -280,7 +283,10 @@ var ACH = [
   { id: 'grandma',  t: '外婆家',     d: '去外婆家看她一次' },
   { id: 'luck33',   t: '幸运33',     d: '玩到第 33 天' },
   { id: 'benz',     t: '大奔驰',     d: '被柚柚包养，收到大奔驰' },
-  { id: 'ticket',   t: '奖券得主',   d: '极低概率获得神秘奖券' }
+  { id: 'ticket',   t: '奖券得主',   d: '极低概率获得神秘奖券' },
+  { id: 'office',   t: '破办公室老板', d: '花 20 万买下破办公室' },
+  { id: 'staff50',  t: '团队 50 人', d: '员工招满 50 人' },
+  { id: 'btc',      t: '币圈神话',   d: '比特币暴涨，一夜暴富' }
 ];
 
 var EVENTS = [
@@ -309,7 +315,7 @@ var COHABIT_EVENTS = [
 
 var WORK_BUFFS = [
   { name: '锦鲤附体', t: '🐟 锦鲤附体！今天工资翻 1.5 倍！', mult: 1.5 },
-  { name: '效率爆棚', t: '⚡ 效率爆棚！每题多赚 1000 元！', per: 1000 },
+  { name: '效率爆棚', t: '⚡ 效率爆棚！每题多拿 100 元！', per: 100 },
   { name: '客户加急单', t: '📦 接到加急单，下班奖金 +3000 元', bonus: 3000 },
   { name: '咖啡加持', t: '☕ 咖啡加持，体力 +10', energy: 10 },
   { name: '摸鱼被抓', t: '🐟 摸鱼被主编抓包，心情 -8', mood: -8 },
@@ -454,7 +460,7 @@ function drawHearts(x, y) {
 }
 
 function newGame() {
-  return {
+  var g = {
     day: 1, money: 100,
     energy: 100, mood: 80, full: 70,
     carClean: 90, rel: 400,
@@ -468,8 +474,12 @@ function newGame() {
     stock: null, lateNights: 0, grandmaSeen: false, swanNight: false,
     workBuff: null, equip: {}, pets: [], ugly: false, handsome: false,
     routes: {}, uglyCount: 0, handsomeCount: 0, askedYoyo: false, theme: 'default',
-    tickets: {}, freeParking: 0, kingDay: 0
+    tickets: {}, freeParking: 0, kingDay: 0,
+    charm: 5, luck: 5, iq: 5,
+    office: false, employees: [], applicant: null, payrollCount: 0, btc: null
   };
+  for (var i = 0; i < 3; i++) g.employees.push(makeEmployee());
+  return g;
 }
 function S() { return window.__S; }
 function save() {
@@ -484,8 +494,34 @@ function loadSave() {
     for (var k in g) if (typeof o[k] !== 'undefined') g[k] = o[k];
     if (!g.vis) g.vis = { places: {}, foods: {}, ktv: 0, ice: 0, wash: 0, drive: 0 };
     if (!g.ach) g.ach = {};
+    if (!g.employees || !g.employees.length) {
+      g.employees = [];
+      for (var i = 0; i < 3; i++) g.employees.push(makeEmployee());
+    }
     return g;
   } catch (e) { return null; }
+}
+
+var EMP_NAMES = ['小张', '小李', '小王', '小刘', '阿强', '阿美', '小周', '大壮', '楠楠', '建国', '晓东', '梦琪'];
+function makeEmployee() {
+  return {
+    name: EMP_NAMES[Math.floor(Math.random() * EMP_NAMES.length)],
+    salary: 3000 + Math.floor(Math.random() * 2001),
+    mood: 80
+  };
+}
+function totalPayroll() {
+  var g = S();
+  var t = 0;
+  for (var i = 0; i < g.employees.length; i++) t += g.employees[i].salary;
+  return t;
+}
+function avgMood() {
+  var g = S();
+  if (!g.employees.length) return 100;
+  var t = 0;
+  for (var i = 0; i < g.employees.length; i++) t += g.employees[i].mood;
+  return t / g.employees.length;
 }
 
 /* ===== 音效系统（原创合成音，冒险岛风：轻快明亮的复古电子音） ===== */
@@ -648,7 +684,7 @@ var MELODIES = {
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function addStat(k, v) {
-  var limits = { energy: 100, mood: 100, full: 100, carClean: 100, rel: 1000 };
+  var limits = { energy: 100, mood: 100, full: 100, carClean: 100, rel: 1000, charm: 99, luck: 99, iq: 99 };
   S()[k] = clamp((S()[k] || 0) + v, 0, limits[k] || 999);
 }
 function addMoney(v) {
@@ -820,10 +856,13 @@ function renderStats() {
     ['full', '🍚饱腹', 100],
     ['carClean', '🚿车况', 100],
     ['rel', '💕柚柚', 1000],
-    ['money', '💰存款', 0]
+    ['money', '💰存款', 0],
+    ['charm', '✨魅力', 99],
+    ['luck', '🍀运气', 99],
+    ['iq', '🧠智商', 99]
   ];
   var html = '';
-  var barCls = { energy: 'b-energy', mood: 'b-mood', full: 'b-full', carClean: 'b-car', rel: 'b-rel' };
+  var barCls = { energy: 'b-energy', mood: 'b-mood', full: 'b-full', carClean: 'b-car', rel: 'b-rel', charm: 'b-charm', luck: 'b-luck', iq: 'b-iq' };
   map.forEach(function(m) {
     var v = S()[m[0]];
     if (m[2] === 0) {
@@ -1168,6 +1207,13 @@ function showChoicesOf(phase) {
       ];
       nightChoices.push({ text: '🌙 熬夜', cls: 'orange', fn: stayUpLate });
       nightChoices.push({ text: '🛒 逛商城', cls: 'blue', fn: shopMenu });
+      nightChoices.push({ text: '🏢 公司管理', cls: 'green', fn: companyMenu });
+      if (g.day >= 15 && g.money < 300000 && !g.btc) {
+        nightChoices.push({ text: '🪙 买比特币', cls: 'orange', fn: btcMenu });
+      }
+      if (g.day >= 10 && !g.office && g.money >= 200000) {
+        nightChoices.push({ text: '🏢 买破办公室（20万）', cls: 'orange', fn: buyOffice });
+      }
       if (g.carIssue) {
         nightChoices.push({ text: '🔧 去修车（' + (g.carIssue === 'tire' ? 800 : 600) + '元）', cls: 'orange', fn: repairCar });
       }
@@ -1256,7 +1302,7 @@ function startWork() {
     if (b.mood) addStat('mood', b.mood);
     if (b.energy) addStat('energy', b.energy);
   }
-  log('先把这几道口算题做完吧！答对一题多赚 1200 元。', '');
+  log('先把这几道口算题做完吧！答对一题多拿 100 元小奖金。', '');
   workQ(0, 0);
 }
 function workQ(n, score) {
@@ -1265,15 +1311,31 @@ function workQ(n, score) {
     $('workQ').classList.add('hidden');
     $('workInput').classList.add('hidden');
     var mult = (g.workBuff && g.workBuff.mult) ? g.workBuff.mult : 1;
-    var per = (g.workBuff && g.workBuff.per) ? g.workBuff.per : 1200;
+    var per = 100;
     var bonus = (g.workBuff && g.workBuff.bonus) ? g.workBuff.bonus : 0;
-    var earn = Math.round((12000 + score * per) * mult) + bonus;
+    var moodF = 0.6 + avgMood() / 250;
+    var bigChance = Math.min(0.4, (0.04 + totalPayroll() / 50000 + (g.office ? 0.05 : 0)) * moodF);
+    var rr = Math.random();
+    var base = 0;
+    if (rr < 0.15) base = 0;
+    else if (rr < 0.15 + bigChance) base = 10000 + Math.floor(Math.random() * 10001);
+    else base = 1000 + Math.floor(Math.random() * 5001);
+    var earn = Math.round((base + score * per) * mult) + bonus;
     addMoney(earn);
     addStat('energy', -12);
     addStat('mood', g.withYoyo ? 0 : -4);
     if (g.withYoyo) addStat('rel', 15);
-    SFX.coin();
-    log('下班啦！工资 +' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
+    if (earn === 0) {
+      SFX.wrong();
+      log('今天没接到什么活……赚了 0 元', 'bad');
+    } else if (base >= 10000) {
+      SFX.fanfare();
+      SFX.coin();
+      log('🔥 大单！今天赚了 ' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
+    } else {
+      SFX.coin();
+      log('下班啦！今天赚了 ' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
+    }
     unlock('work1');
     if (g.withYoyo) log('柚柚说：明天还要来帮你！', 'ok');
     afterWork();
@@ -1306,10 +1368,45 @@ function workQ(n, score) {
   ]);
 }
 function afterWork() {
-  S().phase = 'lunch';
+  var g = S();
+  g.phase = 'lunch';
   setScene('office');
+  if (!g.applicant && Math.random() < 0.45) g.applicant = makeEmployee();
+  if (g.applicant) {
+    log('📋 有人来应聘：' + g.applicant.name + '，要求工资 ' + g.applicant.salary + ' 元/10天', '');
+    choices([
+      { text: '✅ 招聘 ' + g.applicant.name, cls: 'green', fn: hireApplicant },
+      { text: '❌ 婉拒', cls: 'gray', fn: function() {
+        g.applicant = null;
+        log('你婉拒了应聘者，他叹了口气走了', '');
+        afterWork();
+      } },
+      { text: '🍚 先去吃饭，稍后再说', cls: 'gray', fn: function() {
+        logTitle('下班了，先吃饭，应聘的事晚上再说');
+        showChoicesOf('lunch');
+      } }
+    ]);
+    return;
+  }
   logTitle('下班了，吃什么？');
   showChoicesOf('lunch');
+}
+function hireApplicant() {
+  var g = S();
+  if (g.employees.length >= 50) {
+    log('公司最多 50 人，招不下了', 'bad');
+    g.applicant = null;
+    afterWork();
+    return;
+  }
+  var a = g.applicant;
+  g.employees.push(a);
+  g.applicant = null;
+  SFX.coin();
+  log('🎉 ' + a.name + ' 入职了！', 'ok');
+  if (a.name === '马云' || a.name === '马化腾' || a.name === '雷军') log('🧐 这名字……总感觉在哪里见过？', '');
+  if (a.name === '柚柚') log('等等，柚柚不是只负责冰饮料吗……算了，能干活就行', '');
+  afterWork();
 }
 
 function choosePlay() {
@@ -1962,6 +2059,115 @@ function calmTsundere() {
   });
 }
 
+/* ===== 公司经营 ===== */
+function companyMenu() {
+  var g = S();
+  setScene('office');
+  logTitle('🏢 公司管理 · 员工 ' + g.employees.length + '/50 · 工资 ' + totalPayroll() + ' 元/10天');
+  var arr = [
+    { text: '📋 看应聘者', cls: 'blue', fn: function() {
+      if (!g.applicant) { log('现在没有应聘者，过两天再来看看吧', 'bad'); companyMenu(); return; }
+      log('📋 ' + g.applicant.name + ' 还在等消息（工资 ' + g.applicant.salary + ' 元/10天）', '');
+      choices([
+        { text: '✅ 招聘 ' + g.applicant.name, cls: 'green', fn: function() { hireApplicant(); companyMenu(); } },
+        { text: '❌ 婉拒', cls: 'gray', fn: function() { g.applicant = null; log('应聘者离开了', ''); companyMenu(); } },
+        { text: '↩️ 返回', cls: 'gray', fn: companyMenu }
+      ]);
+    } },
+    { text: '🍬 安抚员工（500元）', cls: 'orange', fn: function() {
+      if (g.money < 500) { log('钱不够安抚员工', 'bad'); companyMenu(); return; }
+      addMoney(-500);
+      for (var i = 0; i < g.employees.length; i++) g.employees[i].mood = Math.min(100, g.employees[i].mood + 25);
+      SFX.pop();
+      log('你请大家喝了下午茶，员工心情大好！', 'ok');
+      companyMenu();
+    } },
+    { text: '🚪 辞退一名员工', cls: 'gray', fn: function() {
+      if (!g.employees.length) { log('已经没有员工了', 'bad'); companyMenu(); return; }
+      var idx = Math.floor(Math.random() * g.employees.length);
+      var e = g.employees.splice(idx, 1)[0];
+      log('你辞退了 ' + e.name + '（工资 ' + e.salary + ' 元/10天）', 'bad');
+      if (e.name === '柚柚') log('……你把柚柚辞了？！她抱着冰饮料头也不回地走了', 'bad');
+      SFX.wrong();
+      companyMenu();
+    } },
+    { text: '↩️ 返回', cls: 'gray', fn: showNight }
+  ];
+  choices(arr);
+}
+function payday() {
+  var g = S();
+  g.payrollCount++;
+  if (g.payrollCount % 10 !== 0) return;
+  var total = totalPayroll();
+  if (!g.employees.length) return;
+  if (g.money >= total) {
+    addMoney(-total);
+    SFX.coin();
+    log('💰 发工资日：给 ' + g.employees.length + ' 名员工发了 ' + total + ' 元', '');
+    for (var i = 0; i < g.employees.length; i++) g.employees[i].mood = Math.min(100, g.employees[i].mood + 10);
+  } else {
+    log('🚨 工资发不出来了！员工们都很失望', 'bad');
+    for (var j = 0; j < g.employees.length; j++) g.employees[j].mood = Math.max(0, g.employees[j].mood - 30);
+    SFX.wrong();
+  }
+}
+function tantrumRoll() {
+  var g = S();
+  if (!g.employees.length || Math.random() > 0.22) return;
+  var e = g.employees[Math.floor(Math.random() * g.employees.length)];
+  e.mood = Math.max(0, e.mood - 30);
+  log('😤 ' + e.name + ' 发小脾气了：嫌工位太小！', 'bad');
+  if (e.mood < 30) log('💬 老员工悄悄说：再哄不好，' + e.name + ' 可能要离职……', '');
+}
+function buyOffice() {
+  var g = S();
+  if (g.office) { log('已经有办公室啦', 'bad'); showNight(); return; }
+  if (g.day < 10) { log('现在买办公室太早了，先把公司做起来（第 10 天后再来）', 'bad'); showNight(); return; }
+  if (g.money < 200000) { log('买破办公室要 20 万，还差 ' + (200000 - g.money) + ' 元', 'bad'); showNight(); return; }
+  addMoney(-200000);
+  g.office = true;
+  setTheme('boss');
+  SFX.fanfare();
+  SFX.coin();
+  unlock('office');
+  log('🏢 你盘下了一间破办公室！墙皮掉渣，但能招最多 50 人', 'ok');
+  log('办公室加成：触发万元大单的几率 +5%', 'ok');
+  showNight();
+}
+function btcMenu() {
+  choices([
+    { text: '🪙 买 5000 元比特币', cls: 'orange', fn: function() { investBtc(5000); } },
+    { text: '🪙 买 10000 元比特币', cls: 'orange', fn: function() { investBtc(10000); } },
+    { text: '🪙 买 20000 元比特币', cls: 'orange', fn: function() { investBtc(20000); } },
+    { text: '↩️ 不买了', cls: 'gray', fn: showNight }
+  ]);
+}
+function investBtc(amount) {
+  var g = S();
+  if (g.money < amount) { log('存款不够 ' + amount + ' 元', 'bad'); btcMenu(); return; }
+  addMoney(-amount);
+  g.btc = { amount: amount };
+  log('你买了 ' + amount + ' 元的比特币，明天看行情', 'ok');
+  showNight();
+}
+function resolveBtc() {
+  var g = S();
+  if (!g.btc) return;
+  var pct = Math.round(Math.random() * 120 - 40);
+  if (Math.random() < 0.01) pct = 1000;
+  var diff = Math.round(g.btc.amount * pct / 100);
+  addMoney(g.btc.amount + diff);
+  log('🪙 比特币' + (pct >= 0 ? '涨了' : '跌了') + ' ' + Math.abs(pct) + '%，' + (pct >= 0 ? '赚了' : '亏了') + ' ' + Math.abs(diff) + ' 元', pct >= 0 ? 'ok' : 'bad');
+  if (pct >= 0) SFX.coin(); else SFX.wrong();
+  if (pct >= 100) {
+    SFX.fanfare();
+    unlock('btc');
+    log('🚀 比特币暴涨！你被称作币圈神话！', 'big');
+  }
+  g.btc = null;
+}
+
 /* ===== 柚柚随机 buff 与模式 ===== */
 function yoyoBuff() {
   var g = S();
@@ -2004,12 +2210,14 @@ function shopMenu() {
   $('choices').innerHTML = '';
   $('choices').className = '';
   var items = [
-    { kind: 'phone', ico: '📱', name: '新款手机', price: 50000, owned: !!(g.equip && g.equip.phone), fn: function() { buyEquip('phone'); } },
-    { kind: 'guitar', ico: '🎸', name: '木吉他', price: 20000, owned: !!(g.equip && g.equip.guitar), fn: function() { buyEquip('guitar'); } },
-    { kind: 'mic', ico: '🎤', name: '麦克风套装', price: 10000, owned: !!(g.equip && g.equip.mic), fn: function() { buyEquip('mic'); } },
-    { kind: 'house', ico: '🏠', name: '瓦尔登湖大平层', price: 500000, owned: !!(g.equip && g.equip.house), fn: function() { buyEquip('house'); } },
-    { kind: 'cat', ico: '🐱', name: '领养猫咪', price: 1000, owned: false, fn: function() { adoptPet('cat'); } },
-    { kind: 'dog', ico: '🐶', name: '领养狗狗', price: 1500, owned: false, fn: function() { adoptPet('dog'); } },
+    { kind: 'phone', ico: '📱', name: '新款手机', price: 150000, owned: !!(g.equip && g.equip.phone), fn: function() { buyEquip('phone'); } },
+    { kind: 'guitar', ico: '🎸', name: '木吉他', price: 60000, owned: !!(g.equip && g.equip.guitar), fn: function() { buyEquip('guitar'); } },
+    { kind: 'mic', ico: '🎤', name: '麦克风套装', price: 30000, owned: !!(g.equip && g.equip.mic), fn: function() { buyEquip('mic'); } },
+    { kind: 'house', ico: '🏠', name: '瓦尔登湖大平层', price: 1500000, owned: !!(g.equip && g.equip.house), fn: function() { buyEquip('house'); } },
+    { kind: 'cat', ico: '🐱', name: '领养猫咪', price: 3000, owned: false, fn: function() { adoptPet('cat'); } },
+    { kind: 'dog', ico: '🐶', name: '领养狗狗', price: 4500, owned: false, fn: function() { adoptPet('dog'); } },
+    { kind: 'snack', ico: '🍟', name: '辣条大礼包', price: 500, owned: !!(g.equip && g.equip.snack), fn: function() { buyEquip('snack'); } },
+    { kind: 'pants', ico: '🩳', name: '大裤衩', price: 800, owned: !!(g.equip && g.equip.pants), fn: function() { buyEquip('pants'); } },
     { kind: 'bao5', ico: '🚙', name: '浅绿豹5', price: 300000, owned: g.car === 'bao5' || g.car === 'benz', fn: shopBuyCar }
   ];
   var html = '<div class="shop">';
@@ -2055,10 +2263,12 @@ function shopBuyCar() {
 function buyEquip(kind) {
   var g = S();
   var items = {
-    phone: { price: 50000, name: '新款手机', log: '📱 换了新手机！以后每天心情+3' },
-    guitar: { price: 20000, name: '木吉他', log: '🎸 买了木吉他！柚柚以后可以在车上弹给你听' },
-    mic: { price: 10000, name: '麦克风套装', log: '🎤 K歌装备升级！K歌心情加成' },
-    house: { price: 500000, name: '瓦尔登湖大平层', log: '🏠 搬进大平层！每天体力+5，心情+5' }
+    phone: { price: 150000, name: '新款手机', log: '📱 换了新手机！魅力+8，智商+3，运气+2', charm: 8, iq: 3, luck: 2 },
+    guitar: { price: 60000, name: '木吉他', log: '🎸 抱起木吉他整个人都文艺了！魅力+10，运气+3', charm: 10, luck: 3 },
+    mic: { price: 30000, name: '麦克风套装', log: '🎤 麦霸装备！魅力+12', charm: 12 },
+    house: { price: 1500000, name: '瓦尔登湖大平层', log: '🏠 住进大平层！魅力+15，运气+5，智商+2', charm: 15, luck: 5, iq: 2 },
+    snack: { price: 500, name: '辣条大礼包', log: '🍟 辣条自由！魅力-3，运气+2', charm: -3, luck: 2 },
+    pants: { price: 800, name: '大裤衩', log: '🩳 大裤衩舒服是真舒服……魅力-5，智商+1', charm: -5, iq: 1 }
   };
   var it = items[kind];
   if (!g.equip) g.equip = {};
@@ -2066,15 +2276,28 @@ function buyEquip(kind) {
   if (g.money < it.price) { log('钱不够，还差 ' + (it.price - g.money) + ' 元', 'bad'); shopMenu(); return; }
   addMoney(-it.price);
   g.equip[kind] = true;
+  if (it.charm) addStat('charm', it.charm);
+  if (it.luck) addStat('luck', it.luck);
+  if (it.iq) addStat('iq', it.iq);
   SFX.coin();
   log(it.log, 'ok');
   shopMenu();
 }
 function adoptPet(type) {
   var g = S();
-  var price = type === 'cat' ? 1000 : 1500;
+  var price = type === 'cat' ? 3000 : 4500;
   if (g.money < price) { log('钱不够领养', 'bad'); shopMenu(); return; }
   addMoney(-price);
+  if (type === 'cat') {
+    addStat('charm', -1);
+    addStat('luck', 5);
+    log('🐱 魅力-1（毛太多），运气+5', '');
+  } else {
+    addStat('charm', -2);
+    addStat('luck', 4);
+    addStat('iq', 1);
+    log('🐶 魅力-2，运气+4，智商+1', '');
+  }
   var pet = { type: type, name: type === 'cat' ? '年糕' : '豆豆' };
   g.pets.push(pet);
   log((type === 'cat' ? '🐱' : '🐶') + ' 你领养了一只' + (type === 'cat' ? '猫' : '狗') + '！给它取个名字吧', 'ok');
@@ -2327,10 +2550,14 @@ function nextDay() {
   addStat('full', -15);
   rollWeather();
   resolveStock();
+  resolveBtc();
+  payday();
+  tantrumRoll();
   yoyoBuff();
   modeRolls();
   bigEventRoll();
   checkRoutes();
+  if (g.employees.length >= 50) unlock('staff50');
   if (g.day === 33) {
     unlock('luck33');
     addMoney(3333);

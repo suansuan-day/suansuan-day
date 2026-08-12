@@ -259,7 +259,9 @@
 </div>
 <script>
 'use strict';
-var KEY = 'suansuan-day-v1';
+var KEY = 'ss-active-slot';
+var SLOT1 = 'ss-slot-1';
+var SLOT2 = 'ss-slot-2';
 var $ = function(id) { return document.getElementById(id); };
 var canvas = $('scene'), ctx = canvas.getContext('2d');
 var FRAME = 0;
@@ -383,7 +385,10 @@ var STORY_BEATS = {
   40: '《大三年》签售会座无虚席。',
   50: '你成了圈子里小有名气的出版人。',
   66: '66 大顺，路上捡到 666 元。',
-  99: '江湖上已经有了你的传说。'
+  99: '江湖上已经有了你的传说。',
+  45: '你陪柚柚看了一场老电影，散场时她轻轻靠在你肩上。',
+  60: '瓦尔登湖图书节的邀请函到了，落款是组委会。',
+  80: '图书节开幕！全城的书迷都在等你。'
 };
 
 var PAL = {
@@ -522,22 +527,55 @@ function newGame() {
     charm: 5, luck: 5, iq: 5,
     office: false, employees: [], applicant: null, applicantDone: false, payrollCount: 0, btc: null,
     gotIncomeToday: false, melancholyStreak: 0, liangEvent: false, companyName: '川川出版社', lastSeason: 0,
-    diary: [], wishDay: 0, mirrorBuff: false, workedToday: false, playedToday: false, moneyAtMorning: 0, ufoSeen: false
+    diary: [], wishDay: 0, mirrorBuff: false, workedToday: false, playedToday: false, moneyAtMorning: 0, ufoSeen: false,
+    activeSlot: '1'
   };
   for (var i = 0; i < 3; i++) g.employees.push(makeEmployee());
   return g;
 }
 function S() { return window.__S; }
+function activeSlotKey() {
+  var s = '1';
+  try { s = localStorage.getItem(KEY) || '1'; } catch (e) {}
+  return s === '2' ? SLOT2 : SLOT1;
+}
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S())); } catch (e) {}
+  try {
+    localStorage.setItem(activeSlotKey(), JSON.stringify(S()));
+    localStorage.setItem(KEY, S().activeSlot || '1');
+  } catch (e) {}
+}
+function saveToSlot(n) {
+  try {
+    localStorage.setItem(n === 2 ? SLOT2 : SLOT1, JSON.stringify(S()));
+    S().activeSlot = String(n);
+    localStorage.setItem(KEY, String(n));
+  } catch (e) {}
+}
+function slotInfo(n) {
+  try {
+    var raw = localStorage.getItem(n === 2 ? SLOT2 : SLOT1);
+    if (!raw) return null;
+    var o = JSON.parse(raw);
+    return { day: o.day, money: o.money, car: o.car };
+  } catch (e) { return null; }
 }
 function loadSave() {
   try {
-    var raw = localStorage.getItem(KEY);
+    var raw = localStorage.getItem(activeSlotKey());
+    if (!raw) {
+      var old = localStorage.getItem('suansuan-day-v1');
+      if (old) {
+        localStorage.setItem(SLOT1, old);
+        localStorage.setItem(KEY, '1');
+        raw = old;
+      }
+    }
     if (!raw) return null;
     var o = JSON.parse(raw);
     var g = newGame();
     for (var k in g) if (typeof o[k] !== 'undefined') g[k] = o[k];
+    g.activeSlot = localStorage.getItem(KEY) || '1';
     if (!g.vis) g.vis = { places: {}, foods: {}, ktv: 0, ice: 0, wash: 0, drive: 0 };
     if (!g.ach) g.ach = {};
     if (!g.employees || !g.employees.length) {
@@ -1344,6 +1382,7 @@ function showChoicesOf(phase) {
       nightChoices.push({ text: '📔 写日记', cls: 'gray', fn: diaryModal });
       nightChoices.push({ text: '🕳️ 去许愿井', cls: 'blue', fn: wishWell });
       nightChoices.push({ text: '🎯 看看目标', cls: 'gray', fn: goalPanel });
+      nightChoices.push({ text: '💾 存档管理', cls: 'gray', fn: saveManager });
       if (g.pets && g.pets.length) {
         nightChoices.push({ text: '🐾 摸摸宠物', cls: 'orange', fn: petPet });
         nightChoices.push({ text: '🐾 和宠物聊天', cls: 'orange', fn: petChat });
@@ -2245,9 +2284,68 @@ function goalPanel() {
   });
   var box = document.createElement('div');
   box.className = 'modal';
-  box.innerHTML = '<div class="box"><h2>🎯 目标清单</h2>' + html + '<br><button type="button" class="btn green" id="goalClose">继续加油</button></div>';
+  box.innerHTML = '<div class="box"><h2>🎯 目标清单</h2><p>📖 主线：' + chapterName() + '</p>' + html + '<br><button type="button" class="btn green" id="goalClose">继续加油</button></div>';
   document.body.appendChild(box);
   box.querySelector('#goalClose').onclick = function() { SFX.click(); box.remove(); };
+}
+function chapterName() {
+  var d = S().day;
+  if (d <= 9) return '第一章 · 接盘起步';
+  if (d <= 24) return '第二章 · 破局求生';
+  if (d <= 39) return '第三章 · 一战成名';
+  if (d <= 59) return '第四章 · 情之所起';
+  if (d <= 79) return '第五章 · 巅峰对决';
+  return '终章 · 瓦尔登湖传说';
+}
+function saveManager() {
+  var i1 = slotInfo(1);
+  var i2 = slotInfo(2);
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>💾 存档管理</h2><p>当前：存档' + (S().activeSlot || '1') + '</p>' +
+    '<div class="diary">存档1：' + (i1 ? '第 ' + i1.day + ' 天 · ¥' + i1.money : '空') + '</div>' +
+    '<div class="diary">存档2：' + (i2 ? '第 ' + i2.day + ' 天 · ¥' + i2.money : '空') + '</div>' +
+    '<br><button type="button" class="btn orange" id="save1">💾 另存到存档1</button><br><br>' +
+    '<button type="button" class="btn orange" id="save2">💾 另存到存档2</button><br><br>' +
+    '<button type="button" class="btn gray" id="saveClose">返回</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#save1').onclick = function() { saveToSlot(1); SFX.coin(); log('已另存到存档1', 'ok'); box.remove(); };
+  box.querySelector('#save2').onclick = function() { saveToSlot(2); SFX.coin(); log('已另存到存档2', 'ok'); box.remove(); };
+  box.querySelector('#saveClose').onclick = function() { SFX.click(); box.remove(); };
+}
+function afterStory() {
+  showChoicesOf('morning');
+}
+function storyChoice(day) {
+  var g = S();
+  if (!g.storyDone) g.storyDone = {};
+  if (g.storyDone[day]) return;
+  g.storyDone[day] = 1;
+  if (day === 24) {
+    logTitle('🎭 主线抉择：老麦想挖走你的王牌员工！');
+    choices([
+      { text: '💸 花 3 万加薪留住他', cls: 'orange', fn: function() { addMoney(-30000); addStat('mood', 6); log('员工感动得当场表忠心！', 'ok'); SFX.coin(); afterStory(); } },
+      { text: '🤝 放手，收 5 万转会费', cls: 'gray', fn: function() { addMoney(50000); if (g.employees.length > 1) g.employees.pop(); log('你大方放手，江湖上多了个传说', ''); afterStory(); } }
+    ]);
+  } else if (day === 35) {
+    logTitle('🎭 主线危机：有人抄袭了你的书！');
+    choices([
+      { text: '⚖️ 起诉维权（花 1 万）', cls: 'orange', fn: function() { addMoney(-10000); addStat('mood', 8); addStat('iq', 2); log('官司赢了，读者纷纷点赞，智商+2', 'ok'); SFX.fanfare(); afterStory(); } },
+      { text: '😔 忍气吞声', cls: 'gray', fn: function() { addStat('mood', -6); log('你咽下了这口气，但心里很不好受', 'bad'); afterStory(); } }
+    ]);
+  } else if (day === 70) {
+    logTitle('🎭 主线对决：老麦登门求和');
+    choices([
+      { text: '🤝 强强联手（+5 万）', cls: 'green', fn: function() { addMoney(50000); addStat('mood', 6); log('老麦大笑：瓦尔登湖以后是我们的天下！', 'ok'); SFX.coin(); afterStory(); } },
+      { text: '🚫 拒绝，硬气到底', cls: 'gray', fn: function() { addStat('mood', 10); log('你关上门，老麦在门外叹了口气', 'ok'); afterStory(); } }
+    ]);
+  } else if (day === 90) {
+    logTitle('🎭 主线终局：站在人生的岔路口');
+    choices([
+      { text: '🏢 扩张公司，走向更大的江湖', cls: 'green', fn: function() { addMoney(20000); addStat('mood', 8); log('公司版图扩大，你成了行业标杆！', 'ok'); SFX.fanfare(); afterStory(); } },
+      { text: '✈️ 陪柚柚去旅行（花 2 万）', cls: 'pink', fn: function() { addMoney(-20000); addStat('rel', 100); addStat('mood', 20); log('瓦尔登湖边的晚风里，柚柚说：谢谢你选择了我', 'ok'); SFX.fanfare(); afterStory(); } }
+    ]);
+  }
 }
 function petPet() {
   var g = S();
@@ -3169,6 +3267,7 @@ function nextDay() {
   g.phase = 'morning';
   setScene('road');
   if (g.carClean < 30) log('🚨 车脏得不行了，今天记得洗车！', 'bad');
+  storyChoice(g.day);
   showChoicesOf('morning');
 }
 
@@ -3201,20 +3300,27 @@ function startScreen() {
   setScene('title');
   $('log').innerHTML = '';
   logTitle('欢迎来到《酸酸的一天》');
+  log('📖 主线：' + chapterName(), 'ev');
   var t0 = currentTitle();
   log('🏅 当前称号：' + t0.icon + ' ' + t0.name, 'ok');
   if (S().diary && S().diary.length) log('📔 已写日记 ' + S().diary.length + ' 篇', '');
+  var i1 = slotInfo(1);
+  var i2 = slotInfo(2);
+  log('💾 存档1：' + (i1 ? '第 ' + i1.day + ' 天 · ¥' + i1.money : '空'), '');
+  log('💾 存档2：' + (i2 ? '第 ' + i2.day + ' 天 · ¥' + i2.money : '空'), '');
   log('你住在瓦尔登湖，是川川出版社的老板。每天开车上班或出去玩，吃饭、K歌、钓鱼，还能和柚柚一起。', '');
   log('代表作《大三年》最近卖得不错，签名版都断货了。', '');
   log('目标：努力赚到 30 万买浅绿色豹5（运气好 15 天，运气差 35 天）！', '');
   log('把柚柚好感刷到 900，还能触发"住在一起"结局，解锁同居玩法！', '');
   choices([
-    { text: '🌟 新的开始', cls: 'green', fn: function() { startNew(); } },
+    { text: '🌟 新的开始（覆盖当前档）', cls: 'green', fn: function() { startNew(); } },
     { text: '📂 继续游戏', cls: 'blue', fn: function() {
       var s = loadSave();
       if (s) { window.__S = s; beginDay(); }
       else { log('没有存档，先开始新游戏吧', 'bad'); }
-    } }
+    } },
+    { text: '💾 读取存档1', cls: 'gray', fn: function() { loadSlot(1); } },
+    { text: '💾 读取存档2', cls: 'gray', fn: function() { loadSlot(2); } }
   ]);
   if (S().tickets && Object.keys(S().tickets).length > 0) {
     var names = { massage: '按摩', parking: '免停车', hongbao: '红包', king: '国王' };
@@ -3229,7 +3335,19 @@ function startNew() {
   window.__S = newGame();
   SFX.chime();
   SFX.initMusic();
+  save();
   beginDay();
+}
+function loadSlot(n) {
+  try { localStorage.setItem(KEY, String(n)); } catch (e) {}
+  var s = loadSave();
+  if (s) {
+    window.__S = s;
+    beginDay();
+    log('已读取存档' + n, 'ok');
+  } else {
+    log('存档' + n + '是空的，先开始新游戏吧', 'bad');
+  }
 }
 function beginDay() {
   S().phase = 'morning';

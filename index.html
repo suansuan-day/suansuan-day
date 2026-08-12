@@ -330,7 +330,10 @@ var EVENTS = [
   { t: '轮胎磨损，车况-4', car: -4, m: -1 },
   { t: '打错电话的人和你聊了十分钟，心情+4', m: 4 },
   { t: '电梯坏了，爬了 12 层楼，体力-6，心情-2', e: -6, m: -2 },
-  { t: '老同学还了你 500 元旧账', money: 500, m: 3 }
+  { t: '老同学还了你 500 元旧账', money: 500, m: 3 },
+  { t: '你擦着白色小别克，想起提车那天，心情+5', m: 5 },
+  { t: '柚柚塞给你一杯冰饮料：路上小心，心情+4', m: 4, rel: 5 },
+  { t: '路过豹5 4S店，你隔着玻璃看了一会儿，心情+3', m: 3 }
 ];
 
 var COHABIT_EVENTS = [
@@ -374,21 +377,29 @@ var BIG_EVENTS = [
 ];
 
 var STORY_BEATS = {
-  1: '故事开始：你接下了川川出版社，账上只有 100 元。',
-  3: '老主顾说你的《大三年》初稿有灵气。',
-  7: '员工们偷偷给你办了个欢迎会。',
-  10: '有人挂牌出售一间破办公室。',
-  15: '行业里开始有人打听你的公司。',
-  20: '一本书突然爆了，订单像雪片一样飞来。',
-  25: '你决定动笔写《大三年》续作。',
-  30: '瓦尔登湖的邻居都认识你了。',
-  40: '《大三年》签售会座无虚席。',
-  50: '你成了圈子里小有名气的出版人。',
-  66: '66 大顺，路上捡到 666 元。',
-  99: '江湖上已经有了你的传说。',
-  45: '你陪柚柚看了一场老电影，散场时她轻轻靠在你肩上。',
-  60: '瓦尔登湖图书节的邀请函到了，落款是组委会。',
-  80: '图书节开幕！全城的书迷都在等你。'
+  1: '你接过川川出版社的钥匙，账上只有 100 元。白色小别克在楼下等你。',
+  3: '忙完一天去川川烧烤撸串，老板多送了你一根。',
+  7: '柚柚往你杯子里倒了一杯冰饮料：加班别太晚。',
+  10: '有人挂牌出售一间破办公室——你的机会来了。',
+  12: '你算了算：办公室 20 万，工资每月要发不少……路还长。',
+  15: '存款还差得远，朋友说：要不试试比特币？',
+  20: '豹5 的广告牌立在路边，你多看了两眼。',
+  25: '你带柚柚去山顶野餐，她数着云说：下次带吉他来。',
+  30: '白色小别克陪了你一个月，车漆亮得能照人。',
+  35: '吵架了。柚柚把冰饮料重重放在桌上，又推到你面前。',
+  40: '老黄钓上巨物请你吃鱼：老板别愁，日子会好的。',
+  45: '你和柚柚看了场老电影，散场时她轻轻靠在你肩上。',
+  50: '洋洋叫你看新剧，你却在算还差多少钱买豹5。',
+  55: '肚肚请客吃大餐：等你提车，我请全城烧烤。',
+  58: '你列了一张名单：要招满 50 人，把川川出版社做成瓦尔登湖最大的出版社。',
+  60: '瓦尔登湖的晚风里，柚柚问：你到底想不想和我一起住？',
+  66: '66 大顺，你在许愿井前扔下一枚硬币。',
+  70: '老麦想挖你的人——你第一次有了老板的烦恼。',
+  75: '柚柚弹起吉他，你突然想唱那首《泪桥》。',
+  80: '你在车里放倒座椅看星星，第一次觉得有点孤单。',
+  85: '存折上的数字终于快够了。',
+  90: '你站在人生的岔路口：事业，还是柚柚？',
+  99: '明天就是第 100 天，你想给她一个答案。'
 };
 
 var PAL = {
@@ -528,7 +539,7 @@ function newGame() {
     office: false, employees: [], applicant: null, applicantDone: false, payrollCount: 0, btc: null,
     gotIncomeToday: false, melancholyStreak: 0, liangEvent: false, companyName: '川川出版社', lastSeason: 0,
     diary: [], wishDay: 0, mirrorBuff: false, workedToday: false, playedToday: false, moneyAtMorning: 0, ufoSeen: false,
-    activeSlot: '1'
+    activeSlot: '1', staffMilestones: {}
   };
   for (var i = 0; i < 3; i++) g.employees.push(makeEmployee());
   return g;
@@ -853,13 +864,13 @@ function rollEvent() {
     addStat('luck', 3);
     addMoney(5000);
     SFX.fanfare();
-    log('🛸 外星人路过瓦尔登湖，送你一块发光石头！智商+8，运气+3，+5000 元', 'big');
+    log('🌠 你做了个怪梦：外星人路过瓦尔登湖。醒来发现枕头下有一块发光的石头，智商+8，运气+3，+5000 元', 'big');
     return;
   }
   if (Math.random() < 0.015 && !g.mirrorBuff) {
     g.mirrorBuff = true;
     addStat('mood', 6);
-    log('🪞 平行世界的酸酸来帮你干了一天活！今天收入 +50%', 'ok');
+    log('🧑‍💼 来了个临时工，长得和你一模一样，干了一整天活！今天收入 +50%', 'ok');
     return;
   }
   if (Math.random() < 0.008) {
@@ -1685,7 +1696,16 @@ function hireApplicant() {
   log('🎉 ' + a.name + ' 入职了！', 'ok');
   if (a.name === '马云' || a.name === '马化腾' || a.name === '雷军') log('🧐 这名字……总感觉在哪里见过？', '');
   if (a.name === '柚柚') log('等等，柚柚不是只负责冰饮料吗……算了，能干活就行', '');
+  staffMilestone();
   afterWork();
+}
+function staffMilestone() {
+  var g = S();
+  if (!g.staffMilestones) g.staffMilestones = {};
+  var n = g.employees.length;
+  if (n >= 10 && !g.staffMilestones[10]) { g.staffMilestones[10] = 1; SFX.fanfare(); log('🏢 公司 10 人！你第一次觉得"老板"两个字沉甸甸的', 'big'); }
+  if (n >= 25 && !g.staffMilestones[25]) { g.staffMilestones[25] = 1; SFX.fanfare(); log('🏢 25 人！办公室热闹得像过年', 'big'); }
+  if (n >= 50 && !g.staffMilestones[50]) { g.staffMilestones[50] = 1; unlock('staff50'); SFX.fanfare(); log('🌟 50 人！你站在门口，想起只有 100 元的第一天', 'big'); }
 }
 
 function choosePlay() {
@@ -2332,10 +2352,10 @@ function storyChoice(day) {
       { text: '🤝 放手，收 5 万转会费', cls: 'gray', fn: function() { addMoney(50000); if (g.employees.length > 1) g.employees.pop(); log('你大方放手，江湖上多了个传说', ''); afterStory(); } }
     ]);
   } else if (day === 35) {
-    logTitle('🎭 主线危机：有人抄袭了你的书！');
+    logTitle('🎭 主剧情：和柚柚吵架了');
     choices([
-      { text: '⚖️ 起诉维权（花 1 万）', cls: 'orange', fn: function() { addMoney(-10000); addStat('mood', 8); addStat('iq', 2); log('官司赢了，读者纷纷点赞，智商+2', 'ok'); SFX.fanfare(); afterStory(); } },
-      { text: '😔 忍气吞声', cls: 'gray', fn: function() { addStat('mood', -6); log('你咽下了这口气，但心里很不好受', 'bad'); afterStory(); } }
+      { text: '💧 买冰饮料低头认错（-200）', cls: 'pink', fn: function() { addMoney(-200); addStat('rel', 60); addStat('mood', 8); log('柚柚接过冰饮料，哼了一声，还是笑了', 'ok'); SFX.coin(); afterStory(); } },
+      { text: '😶 冷战', cls: 'gray', fn: function() { addStat('rel', -80); addStat('mood', -6); log('一夜无话，你翻来覆去睡不着', 'bad'); afterStory(); } }
     ]);
   } else if (day === 70) {
     logTitle('🎭 主线对决：老麦登门求和');
@@ -2416,7 +2436,7 @@ function celebration() {
   var t = currentTitle();
   var box = document.createElement('div');
   box.className = 'modal';
-  box.innerHTML = '<div class="box"><h2>🎆 第 100 天！</h2><p>酸酸的旅程已经 100 天了。</p><p>存款 ' + g.money + ' 元 · 员工 ' + g.employees.length + ' 人</p><p>称号：' + t.icon + ' ' + t.name + '</p><p>成就 ' + Object.keys(g.ach).length + '/' + ACH.length + ' · 路线 ' + Object.keys(g.routes).length + '/' + ROUTES.length + '</p><button type="button" class="btn green" id="celeClose">继续这段旅程</button></div>';
+  box.innerHTML = '<div class="box"><h2>🎆 第 100 天！</h2><p>从 100 元到 ' + g.money + ' 元，从白色小别克到大' + (g.car === 'benz' ? '奔驰' : (g.car === 'bao5' ? '豹5' : '别克')) + '，从一个人到一群人。</p><p>酸酸的旅程，还在继续……</p><p>称号：' + t.icon + ' ' + t.name + '</p><p>成就 ' + Object.keys(g.ach).length + '/' + ACH.length + ' · 路线 ' + Object.keys(g.routes).length + '/' + ROUTES.length + '</p><button type="button" class="btn green" id="celeClose">继续这段旅程</button></div>';
   document.body.appendChild(box);
   box.querySelector('#celeClose').onclick = function() { SFX.click(); box.remove(); };
 }
@@ -2919,7 +2939,8 @@ function buyOffice() {
   SFX.fanfare();
   SFX.coin();
   unlock('office');
-  log('🏢 你盘下了一间破办公室！墙皮掉渣，但能招最多 50 人', 'ok');
+  log('🏢 主线推进：你盘下了那间破办公室，墙上还留着上一任老板写的"坚持"。', 'big');
+  log('墙皮掉渣，但这里能装下 50 个人的梦想', 'ok');
   log('办公室加成：触发万元大单的几率 +5%', 'ok');
   companyNameModal();
 }
@@ -3415,6 +3436,7 @@ function nextDay() {
   bigEventRoll();
   checkRoutes();
   if (g.employees.length >= 50) unlock('staff50');
+  staffMilestone();
   if (STORY_BEATS[g.day]) {
     addStat('mood', 5);
     log('📖 ' + STORY_BEATS[g.day], 'big');

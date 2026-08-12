@@ -192,6 +192,7 @@
   .goal .pct { width: 42px; text-align: right; color: #b9c4d4; }
   .bar i.b-goal { background: #ffd166; }
   .bar i.b-done { background: #7ee081; }
+  .diary { background: #323e50; border: 2px solid #48566b; border-radius: 8px; padding: 6px 8px; margin: 6px 0; font-size: 12px; line-height: 1.5; }
   .ticketBar {
     margin-top: 10px; text-align: center; font-size: 13px; color: #ffd166;
     background: rgba(255,209,102,.12); border: 2px dashed #ffd166;
@@ -208,6 +209,11 @@
     0% { transform: scale(.3); opacity: 0; }
     25% { opacity: 1; }
     100% { transform: scale(1.6); opacity: 0; }
+  }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 998; overflow: hidden; }
+  .conf { position: absolute; top: -20px; width: 8px; height: 12px; animation: confFall 3s linear forwards; }
+  @keyframes confFall {
+    to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
   }
   #fishing {
     width: 100%; height: 46px; background: #1d2430;
@@ -292,7 +298,9 @@ var ACH = [
   { id: 'office',   t: '破办公室老板', d: '花 20 万买下破办公室' },
   { id: 'staff50',  t: '团队 50 人', d: '员工招满 50 人' },
   { id: 'btc',      t: '币圈神话',   d: '比特币暴涨，一夜暴富' },
-  { id: 'liang',    t: '梁朝伟的朋友', d: '连续忧郁三天，触发隐藏支线' }
+  { id: 'liang',    t: '梁朝伟的朋友', d: '连续忧郁三天，触发隐藏支线' },
+  { id: 'day100',   t: '百日庆典',   d: '玩到第 100 天' },
+  { id: 'ufo',      t: '外星朋友',   d: '遇到路过瓦尔登湖的外星人' }
 ];
 
 var EVENTS = [
@@ -513,7 +521,8 @@ function newGame() {
     tickets: {}, freeParking: 0, kingDay: 0,
     charm: 5, luck: 5, iq: 5,
     office: false, employees: [], applicant: null, applicantDone: false, payrollCount: 0, btc: null,
-    gotIncomeToday: false, melancholyStreak: 0, liangEvent: false, companyName: '川川出版社', lastSeason: 0
+    gotIncomeToday: false, melancholyStreak: 0, liangEvent: false, companyName: '川川出版社', lastSeason: 0,
+    diary: [], wishDay: 0, mirrorBuff: false, workedToday: false, playedToday: false, moneyAtMorning: 0, ufoSeen: false
   };
   for (var i = 0; i < 3; i++) g.employees.push(makeEmployee());
   return g;
@@ -643,7 +652,8 @@ var SFX = (function() {
     step = 0; nextT = ctx.currentTime + 0.1;
     bgmTimer = setInterval(function() {
       var c = ac(); if (!c) return;
-      var mlist = (typeof S === 'function' && S() && MELODIES[S().theme]) ? MELODIES[S().theme] : MELODIES.default;
+      var mkey = (typeof S === 'function' && S() && S().bgmOverride) ? S().bgmOverride : ((typeof S === 'function' && S() && MELODIES[S().theme]) ? S().theme : 'default');
+      var mlist = MELODIES[mkey] || MELODIES.default;
       while (nextT < c.currentTime + 0.28) {
         var n = mlist[step % mlist.length];
         tone(n[0], n[1], 'triangle', 0.07, nextT - c.currentTime, undefined, true);
@@ -798,6 +808,22 @@ function rollWeather() {
 }
 function rollEvent() {
   var g = S();
+  if (Math.random() < 0.012 && !g.ufoSeen) {
+    g.ufoSeen = true;
+    unlock('ufo');
+    addStat('iq', 8);
+    addStat('luck', 3);
+    addMoney(5000);
+    SFX.fanfare();
+    log('🛸 外星人路过瓦尔登湖，送你一块发光石头！智商+8，运气+3，+5000 元', 'big');
+    return;
+  }
+  if (Math.random() < 0.015 && !g.mirrorBuff) {
+    g.mirrorBuff = true;
+    addStat('mood', 6);
+    log('🪞 平行世界的酸酸来帮你干了一天活！今天收入 +50%', 'ok');
+    return;
+  }
   if (Math.random() < 0.008) {
     ticketEvent(g);
     return;
@@ -1134,6 +1160,11 @@ function drawCarInside() {
     yoyoSprite(218, 84, 4);
     if (FRAME % 150 < 55) drawHearts(222, 66 - ((FRAME % 150) / 150) * 20);
   }
+  if (S().pets && S().pets.length) {
+    for (var pi = 0; pi < S().pets.length && pi < 3; pi++) {
+      drawPet(120 + pi * 42, 165, S().pets[pi].type);
+    }
+  }
   px(40, 176, 120, 14, '#2e3a4d');
   px(205, 176, 120, 14, '#2e3a4d');
 }
@@ -1287,6 +1318,7 @@ function showChoicesOf(phase) {
       if (g.withYoyo && g.equip && g.equip.guitar) {
         driveActs.splice(1, 0, { text: '🎸 柚柚弹吉他', cls: 'pink', fn: function() { carAct('guitar'); } });
       }
+      driveActs.push({ text: '🎵 点唱机选歌', cls: 'gray', fn: jukeboxMenu });
       choices(driveActs);
       break;
     case 'carSleep':
@@ -1309,9 +1341,12 @@ function showChoicesOf(phase) {
       ];
       nightChoices.push({ text: '🌙 熬夜', cls: 'orange', fn: stayUpLate });
       nightChoices.push({ text: '📱 刷朋友圈', cls: 'blue', fn: momentsFeed });
+      nightChoices.push({ text: '📔 写日记', cls: 'gray', fn: diaryModal });
+      nightChoices.push({ text: '🕳️ 去许愿井', cls: 'blue', fn: wishWell });
       nightChoices.push({ text: '🎯 看看目标', cls: 'gray', fn: goalPanel });
       if (g.pets && g.pets.length) {
         nightChoices.push({ text: '🐾 摸摸宠物', cls: 'orange', fn: petPet });
+        nightChoices.push({ text: '🐾 和宠物聊天', cls: 'orange', fn: petChat });
       }
       nightChoices.push({ text: '🛒 逛商城', cls: 'blue', fn: shopMenu });
       nightChoices.push({ text: '🏢 公司管理', cls: 'green', fn: companyMenu });
@@ -1480,6 +1515,7 @@ function startWork() {
   var g = S();
   g.phase = 'work';
   g.vis.drive++;
+  g.workedToday = true;
   g.workBuff = null;
   setScene('office');
   log('你开车来到川川出版社，开始一天的工作。', '');
@@ -1500,6 +1536,7 @@ function workQ(n, score) {
     $('workQ').classList.add('hidden');
     $('workInput').classList.add('hidden');
     var mult = (g.workBuff && g.workBuff.mult) ? g.workBuff.mult : 1;
+    if (g.mirrorBuff) mult = mult * 1.5;
     var per = 100;
     var bonus = (g.workBuff && g.workBuff.bonus) ? g.workBuff.bonus : 0;
     var moodF = 0.6 + avgMood() / 250;
@@ -1612,6 +1649,7 @@ function choosePlay() {
   S().phase = 'playPlace';
   rememberPlace('play');
   S().vis.drive++;
+  S().playedToday = true;
   setScene('home');
   log('你决定今天不打工！去哪儿玩呢？', '');
   showChoicesOf('playPlace');
@@ -2158,7 +2196,13 @@ function momentsFeed() {
     { who: '小张', text: '老板今天看起来心情不错，加鸡腿！🍗', cls: 'gray', effect: function() { addStat('mood', 6); } },
     { who: '小李', text: '摸鱼被发现了……下次换个地方 😳', cls: 'gray', effect: function() { addStat('mood', 3); } },
     { who: '阿强', text: '在公司楼下发现一家宝藏早餐店！', cls: 'green', effect: function() { addStat('mood', 4); addStat('full', 6); } },
-    { who: '梦琪', text: '今天拍到了超好看的晚霞 🌇', cls: 'pink', effect: function() { addStat('mood', 5); } }
+    { who: '梦琪', text: '今天拍到了超好看的晚霞 🌇', cls: 'pink', effect: function() { addStat('mood', 5); } },
+    { who: '外婆', text: '囡囡，周末回家吃饭，给你炖了汤 🍲', cls: 'orange', effect: function() { addMoney(200); addStat('mood', 8); } },
+    { who: '老黄', text: '《游钓中国》第三集：深夜巨物！🎣', cls: 'green', effect: function() { addStat('mood', 4); addStat('iq', 1); } },
+    { who: '柚柚', text: '（她发了一张天空的照片，没配字）', cls: 'pink', effect: function() { addStat('rel', 6); addStat('mood', 3); } },
+    { who: '麦总', text: '今天又是元气满满的一天！🤣', cls: 'orange', effect: function() { addStat('mood', 5); } },
+    { who: '洋洋', text: '新剧开播，全员演技在线！📺', cls: 'blue', effect: function() { addStat('mood', 4); } },
+    { who: '肚肚', text: '探店成功，这家烧烤绝了！🍢', cls: 'orange', effect: function() { addStat('mood', 5); addStat('full', 4); } }
   ];
   for (var i = pool.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
@@ -2178,6 +2222,7 @@ function momentsFeed() {
     choices([
       { text: '👍 点赞', cls: 'blue', fn: function() { p.effect(); log('你给 ' + p.who + ' 点了个赞', 'ok'); SFX.pop(); showPost(); } },
       { text: '💬 评论一句', cls: 'green', fn: function() { p.effect(); if (p.who === '柚柚') addStat('rel', 4); log('你评论了：哈哈哈哈太真实了', 'ok'); SFX.pop(); showPost(); } },
+      { text: '🔁 转发', cls: 'gray', fn: function() { p.effect(); addStat('luck', 1); log('你转发了 ' + p.who + ' 的朋友圈，运气+1', 'ok'); SFX.pop(); showPost(); } },
       { text: '🙈 忽略', cls: 'gray', fn: function() { showPost(); } }
     ]);
   }
@@ -2228,6 +2273,130 @@ var NEWS = [
   '天气预报：明天可能有彩虹',
   '神秘男子用 33 元买走 3 张彩票，全中'
 ];
+
+function currentTitle() {
+  var g = S();
+  var list = [
+    ['包养之王', '👑', g.routes && g.routes.kept],
+    ['大富翁', '💰', g.routes && g.routes.tycoon],
+    ['币圈神话', '🪙', g.ach && g.ach.btc],
+    ['歌神', '🎤', g.ach && g.ach.godsing],
+    ['图书大亨', '📖', g.routes && g.routes.novelist],
+    ['大G之王', '🚗', g.car === 'benz'],
+    ['车神', '🚙', g.car === 'bao5'],
+    ['情圣', '💕', g.rel >= 900],
+    ['猫狗双全', '🐾', g.pets && g.pets.length >= 2],
+    ['50人团队', '🏢', g.employees && g.employees.length >= 50],
+    ['老板', '💼', !!g.office],
+    ['打工皇帝', '🧱', g.vis && g.vis.drive >= 30],
+    ['新人', '🌱', true]
+  ];
+  for (var i = 0; i < list.length; i++) if (list[i][2]) return { icon: list[i][1], name: list[i][0] };
+  return { icon: '🌱', name: '新人' };
+}
+function showConfetti() {
+  var colors = ['#ff5d5d', '#ffd166', '#7ee081', '#7ec8ee', '#c9a0ff', '#f49bc1'];
+  var box = document.createElement('div');
+  box.id = 'confetti';
+  for (var i = 0; i < 45; i++) {
+    var c = document.createElement('div');
+    c.className = 'conf';
+    c.style.cssText = 'left:' + Math.random() * 100 + '%;background:' + colors[Math.floor(Math.random() * colors.length)] + ';animation-delay:' + (Math.random() * 1.5) + 's;transform:rotate(' + Math.floor(Math.random() * 360) + 'deg)';
+    box.appendChild(c);
+  }
+  document.body.appendChild(box);
+  setTimeout(function() { if (box.remove) box.remove(); }, 5000);
+}
+function celebration() {
+  SFX.fanfare();
+  showConfetti();
+  var g = S();
+  var t = currentTitle();
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>🎆 第 100 天！</h2><p>酸酸的旅程已经 100 天了。</p><p>存款 ' + g.money + ' 元 · 员工 ' + g.employees.length + ' 人</p><p>称号：' + t.icon + ' ' + t.name + '</p><p>成就 ' + Object.keys(g.ach).length + '/' + ACH.length + ' · 路线 ' + Object.keys(g.routes).length + '/' + ROUTES.length + '</p><button type="button" class="btn green" id="celeClose">继续这段旅程</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#celeClose').onclick = function() { SFX.click(); box.remove(); };
+}
+function jukeboxMenu() {
+  choices([
+    { text: '🎵 元气弹（欢快）', cls: 'green', fn: function() { pickSong('stage', '元气弹', 8, 5); } },
+    { text: '🌙 摇篮曲（安静）', cls: 'blue', fn: function() { pickSong('home', '摇篮曲', 4, 8); } },
+    { text: '🌃 午夜电台（慵懒）', cls: 'gray', fn: function() { pickSong('lux', '午夜电台', 6, 3); } },
+    { text: '🔥 摇滚（热血）', cls: 'orange', fn: function() { pickSong('car', '摇滚', 10, -5); } },
+    { text: '↩️ 不听了', cls: 'gray', fn: function() { showChoicesOf('drive'); } }
+  ]);
+}
+function pickSong(key, name, mood, energy) {
+  var g = S();
+  addStat('mood', mood);
+  if (energy) addStat('energy', energy);
+  g.bgmOverride = key;
+  SFX.stopMusic();
+  if (SFX.isMusicOn()) SFX.startMusic();
+  log('🎵 车里响起《' + name + '》，心情' + (mood >= 0 ? '+' : '') + mood + (energy ? '，体力' + (energy >= 0 ? '+' : '') + energy : ''), 'ok');
+  showChoicesOf('drive');
+}
+function drawPet(x, y, type) {
+  if (type === 'cat') {
+    px(x + 1, y - 2, 2, 2, '#d9822b');
+    px(x + 3, y - 2, 2, 2, '#d9822b');
+    px(x, y, 6, 4, '#d9822b');
+    px(x + 1, y + 1, 2, 2, '#ffd166');
+    px(x + 3, y + 1, 1, 1, '#1d2430');
+  } else {
+    px(x + 1, y - 1, 2, 2, '#8a6242');
+    px(x + 5, y - 1, 2, 2, '#8a6242');
+    px(x, y, 8, 4, '#8a6242');
+    px(x + 3, y + 1, 2, 2, '#5b3a29');
+  }
+}
+
+var PET_LINES = {
+  cat: ['喵。', '（猫高傲地走开了）', '罐罐呢？罐罐呢？', '你身上有别的猫的味道……', '呼噜呼噜呼噜'],
+  dog: ['汪汪！', '今天可以加餐吗？', '你回来啦！想死我了！', '这袜子……是给我的礼物吗？', '（疯狂摇尾巴）']
+};
+function petChat() {
+  var g = S();
+  if (!g.pets || !g.pets.length) { showNight(); return; }
+  for (var i = 0; i < g.pets.length; i++) {
+    var p = g.pets[i];
+    var lines = PET_LINES[p.type] || PET_LINES.cat;
+    log((p.type === 'cat' ? '🐱' : '🐶') + ' ' + p.name + '：' + lines[Math.floor(Math.random() * lines.length)], '');
+    addStat('mood', 3);
+  }
+  log('和宠物说说话，心情+' + (g.pets.length * 3), 'ok');
+  showNight();
+}
+function wishWell() {
+  var g = S();
+  if (g.wishDay === g.day) { log('今天已经许过愿了，明天再来吧', 'bad'); showNight(); return; }
+  if (g.money < 100) { log('许愿要投一枚 100 元硬币', 'bad'); showNight(); return; }
+  addMoney(-100);
+  g.wishDay = g.day;
+  var r = Math.random();
+  if (r < 0.3) { addMoney(500 + Math.floor(Math.random() * 1501)); SFX.coin(); log('🪙 许愿井咕噜咕噜冒出一串金币！', 'ok'); }
+  else if (r < 0.55) { addStat('luck', 2); log('🍀 井水泛起涟漪，你感觉运气变好了，运气+2', 'ok'); }
+  else if (r < 0.8) { addStat('mood', 15); log('💧 井水凉凉的，心事好像也冲走了，心情+15', 'ok'); }
+  else if (r < 0.97) { addStat('mood', -5); log('😅 一阵妖风吹过，你的帽子掉井里了，心情-5', 'bad'); }
+  else { addMoney(10000); SFX.fanfare(); showGoldFlash(); log('🌟 许愿井显灵了！愿望实现，+10000 元！', 'big'); }
+  showNight();
+}
+function diaryModal() {
+  var g = S();
+  if (!g.diary || !g.diary.length) { log('日记本还是空的……', ''); showNight(); return; }
+  var html = '';
+  for (var i = 0; i < g.diary.length && i < 10; i++) {
+    var d = g.diary[i];
+    var what = d.worked ? (d.played ? '上班又摸鱼' : '上班') : (d.played ? '出去玩' : '宅家');
+    html += '<div class="diary"><b>第 ' + d.day + ' 天（' + d.season + ' · ' + d.weather + '）</b><br>' + what + (d.yoyo ? '，和柚柚一起' : '') + '，进账 ' + d.earn + ' 元，心情 ' + d.mood + '</div>';
+  }
+  var box = document.createElement('div');
+  box.className = 'modal';
+  box.innerHTML = '<div class="box"><h2>📔 酸酸的日记（' + g.diary.length + ' 篇）</h2><div style="max-height:280px;overflow-y:auto;text-align:left">' + html + '</div><br><button type="button" class="btn green" id="diaryClose">合上日记本</button></div>';
+  document.body.appendChild(box);
+  box.querySelector('#diaryClose').onclick = function() { SFX.click(); box.remove(); };
+}
 
 function cohabitMenu() {
   setScene('home');
@@ -2886,6 +3055,19 @@ function sleep() {
     log(sleepLines[Math.floor(Math.random() * sleepLines.length)], 'ok');
   }
   if (g.carClean < 25) log('车太脏了，明天抽空洗一洗吧', 'bad');
+  var entry = {
+    day: g.day,
+    season: seasonName(),
+    weather: weatherNow().name,
+    worked: g.workedToday,
+    played: g.playedToday,
+    yoyo: g.withYoyo,
+    earn: Math.max(0, g.money - g.moneyAtMorning),
+    mood: Math.round(g.mood)
+  };
+  g.diary.unshift(entry);
+  if (g.diary.length > 30) g.diary.pop();
+  log('📔 你往日记本上写了几笔', '');
   showChoicesOf('sleep');
 }
 function nextDay() {
@@ -2893,6 +3075,11 @@ function nextDay() {
   g.day++;
   g.askedYoyo = false;
   g.gotIncomeToday = false;
+  g.bgmOverride = null;
+  g.moneyAtMorning = g.money;
+  g.workedToday = false;
+  g.playedToday = false;
+  g.mirrorBuff = false;
   var sn = Math.floor((g.day - 1) / 20) % 4;
   if (g.lastSeason !== sn) {
     g.lastSeason = sn;
@@ -2939,6 +3126,10 @@ function nextDay() {
     SFX.fanfare();
     log('33️⃣ 第 33 天！窗外的云刚好组成一个"33"，你捡到 3333 元红包！', 'big');
   }
+  if (g.day === 100) {
+    unlock('day100');
+    celebration();
+  }
   if (g.equip) {
     if (g.equip.phone) addStat('mood', 3);
     if (g.equip.house) { addStat('energy', 5); addStat('mood', 5); }
@@ -2983,6 +3174,7 @@ function nextDay() {
 
 function showAch() {
   var g = S();
+  var t0 = currentTitle();
   var html = '';
   ACH.forEach(function(a) {
     var done = !!g.ach[a.id];
@@ -2999,7 +3191,7 @@ function showAch() {
   html += '<div class="ticketBar">📖 图鉴：路线 ' + routesN + '/' + ROUTES.length + ' · 地点 ' + placeN + '/' + places.length + ' · 美食 ' + foodN + '/11 · 奖券 ' + ticketN + '/4 · 宠物 ' + petN + '</div>';
   var box = document.createElement('div');
   box.className = 'modal';
-  box.innerHTML = '<div class="box"><h2>🏆 成就（' + Object.keys(g.ach).length + '/' + ACH.length + '）</h2><div id="achList">' + html + '</div><br><button type="button" class="btn green" id="achClose">返回</button></div>';
+  box.innerHTML = '<div class="box"><h2>🏆 成就（' + Object.keys(g.ach).length + '/' + ACH.length + '）</h2><p>🏅 当前称号：' + t0.icon + ' ' + t0.name + '</p><div id="achList">' + html + '</div><br><button type="button" class="btn green" id="achClose">返回</button></div>';
   document.body.appendChild(box);
   box.querySelector('#achClose').onclick = function() { SFX.click(); box.remove(); };
 }
@@ -3009,6 +3201,9 @@ function startScreen() {
   setScene('title');
   $('log').innerHTML = '';
   logTitle('欢迎来到《酸酸的一天》');
+  var t0 = currentTitle();
+  log('🏅 当前称号：' + t0.icon + ' ' + t0.name, 'ok');
+  if (S().diary && S().diary.length) log('📔 已写日记 ' + S().diary.length + ' 篇', '');
   log('你住在瓦尔登湖，是川川出版社的老板。每天开车上班或出去玩，吃饭、K歌、钓鱼，还能和柚柚一起。', '');
   log('代表作《大三年》最近卖得不错，签名版都断货了。', '');
   log('目标：努力赚到 30 万买浅绿色豹5（运气好 15 天，运气差 35 天）！', '');

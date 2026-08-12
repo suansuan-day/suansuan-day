@@ -307,7 +307,15 @@ var EVENTS = [
   { t: '停车费 10 元', money: -10, m: -1 },
   { t: '员工在群里夸你是好老板，心情+4', m: 4 },
   { t: '手机收到员工转账 300 元', money: 300 },
-  { t: '柚柚发来语音：记得吃饭！心情+5', m: 5 }
+  { t: '柚柚发来语音：记得吃饭！心情+5', m: 5 },
+  { t: '下暴雨，你躲在车里听广播，心情+3', m: 3 },
+  { t: '路边新开的面馆请你试吃，饱腹+10', full: 10 },
+  { t: '客户介绍了一个新客户，+200 元', money: 200 },
+  { t: '一只鸟落在车顶不肯走，运气+1', luck: 1 },
+  { t: '轮胎磨损，车况-4', car: -4, m: -1 },
+  { t: '打错电话的人和你聊了十分钟，心情+4', m: 4 },
+  { t: '电梯坏了，爬了 12 层楼，体力-6，心情-2', e: -6, m: -2 },
+  { t: '老同学还了你 500 元旧账', money: 500, m: 3 }
 ];
 
 var COHABIT_EVENTS = [
@@ -347,6 +355,21 @@ var BIG_EVENTS = [
   { t: '🎊 员工们偷偷凑了 8888 元，祝老板生日快乐！', money: 8888, m: 15 },
   { t: '📖 出版社接到年度大单！全员加鸡腿', money: 40000, m: 10 }
 ];
+
+var STORY_BEATS = {
+  1: '故事开始：你接下了川川出版社，账上只有 100 元。',
+  3: '老主顾说你的《大三年》初稿有灵气。',
+  7: '员工们偷偷给你办了个欢迎会。',
+  10: '有人挂牌出售一间破办公室。',
+  15: '行业里开始有人打听你的公司。',
+  20: '一本书突然爆了，订单像雪片一样飞来。',
+  25: '你决定动笔写《大三年》续作。',
+  30: '瓦尔登湖的邻居都认识你了。',
+  40: '《大三年》签售会座无虚席。',
+  50: '你成了圈子里小有名气的出版人。',
+  66: '66 大顺，路上捡到 666 元。',
+  99: '江湖上已经有了你的传说。'
+};
 
 var PAL = {
   skin: '#ffd9b3', hair: '#3b2a20', eye: '#1d2430',
@@ -790,7 +813,7 @@ function rollEvent() {
   }
   if (Math.random() > 0.38) return;
   var list = (S().liveTogether && Math.random() < 0.5) ? COHABIT_EVENTS : EVENTS;
-  var e = list[Math.floor(Math.random() * list.length)];
+  var e = list[pickEventIndex(list, g)];
   if (e.t && e.t.indexOf('停车费') >= 0 && g.freeParking > 0) {
     g.freeParking--;
     log('🅿️ 奖券生效：停车费免单！（还剩 ' + g.freeParking + ' 次）', 'ok');
@@ -802,10 +825,24 @@ function rollEvent() {
   if (e.car) addStat('carClean', e.car);
   if (e.rel) addStat('rel', e.rel);
   if (e.money) addMoney(e.money);
+  if (e.full) addStat('full', e.full);
+  if (e.luck) addStat('luck', e.luck);
   if (e.carIssue) g.carIssue = e.carIssue;
   if (e.money > 0) SFX.coin();
   if (e.money < 0) SFX.wrong();
   log('⚡ ' + e.t, e.money < 0 || (e.m && e.m < 0) ? 'bad' : 'ok');
+}
+function pickEventIndex(list, g) {
+  if (!g.lastEvents) g.lastEvents = [];
+  var idx = Math.floor(Math.random() * list.length);
+  var tries = 0;
+  while (g.lastEvents.indexOf(idx) >= 0 && tries < 8) {
+    idx = Math.floor(Math.random() * list.length);
+    tries++;
+  }
+  g.lastEvents.push(idx);
+  if (g.lastEvents.length > 3) g.lastEvents.shift();
+  return idx;
 }
 
 function ticketEvent(g) {
@@ -1367,12 +1404,14 @@ function morningChoicesUI() {
 function morningMainChoices() {
   var g = S();
   if (Math.random() < 0.25) {
-    var e = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+    var e = EVENTS[pickEventIndex(EVENTS, g)];
     if (e.m) addStat('mood', e.m);
     if (e.e) addStat('energy', e.e);
     if (e.car) addStat('carClean', e.car);
     if (e.rel) addStat('rel', e.rel);
     if (e.money) addMoney(e.money);
+    if (e.full) addStat('full', e.full);
+    if (e.luck) addStat('luck', e.luck);
     if (e.carIssue) g.carIssue = e.carIssue;
     if (e.money > 0) SFX.coin();
     if (e.money < 0) SFX.wrong();
@@ -1449,7 +1488,13 @@ function workQ(n, score) {
       log('🔥 大单！今天赚了 ' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
     } else {
       SFX.coin();
-      log('下班啦！今天赚了 ' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）', 'ok');
+      var earnLines = [
+        '下班啦！今天赚了 ' + earn + ' 元（含答题奖励 ' + Math.round(score * per * mult) + ' 元）',
+        '收工！今天进账 ' + earn + ' 元',
+        '今天到手 ' + earn + ' 元，美滋滋',
+        '手机上跳出到账通知：+' + earn + ' 元'
+      ];
+      log(earnLines[Math.floor(Math.random() * earnLines.length)], 'ok');
     }
     unlock('work1');
     if (g.withYoyo) log('柚柚说：明天还要来帮你！', 'ok');
@@ -2709,7 +2754,8 @@ function sleep() {
   } else {
     addStat('energy', 35);
     addStat('full', -25);
-    log('睡了个好觉，体力 +35', 'ok');
+    var sleepLines = ['睡了个好觉，体力 +35', '一夜无梦，体力+35', '柚柚的晚安语音循环了三遍，睡得很香，体力+35', '被子一裹，直接睡到天亮，体力+35'];
+    log(sleepLines[Math.floor(Math.random() * sleepLines.length)], 'ok');
   }
   if (g.carClean < 25) log('车太脏了，明天抽空洗一洗吧', 'bad');
   showChoicesOf('sleep');
@@ -2743,6 +2789,11 @@ function nextDay() {
   bigEventRoll();
   checkRoutes();
   if (g.employees.length >= 50) unlock('staff50');
+  if (STORY_BEATS[g.day]) {
+    addStat('mood', 5);
+    log('📖 ' + STORY_BEATS[g.day], 'big');
+    if (g.day === 66) addMoney(666);
+  }
   if (g.day === 33) {
     unlock('luck33');
     addMoney(3333);

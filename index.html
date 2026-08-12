@@ -1357,6 +1357,7 @@ function showChoicesOf(phase) {
         driveActs.splice(1, 0, { text: '🎸 柚柚弹吉他', cls: 'pink', fn: function() { carAct('guitar'); } });
       }
       driveActs.push({ text: '🎵 点唱机选歌', cls: 'gray', fn: jukeboxMenu });
+      driveActs.push({ text: '🎵 节奏记忆', cls: 'blue', fn: function() { simonGame(function() { showChoicesOf('drive'); }); } });
       choices(driveActs);
       break;
     case 'carSleep':
@@ -1461,7 +1462,10 @@ var EXTRA_OPTIONS = [
       addStat('mood', 6);
       log('你系上围裙仔细做菜，火候讲究，摆盘精美——好吃！', 'ok');
       if (g.liveTogether || g.withYoyo) { addStat('rel', 10); log('柚柚尝了一口：比上次进步多了！关系+10', 'ok'); }
-    } }
+    } },
+  { ico: '🃏', text: '玩一局记忆翻牌', cls: 'blue', async: true, fn: function() { memoryGame(function(score) { if (score >= 6) addStat('iq', 1); addStat('mood', 2 + score); log('记忆翻牌拿了 ' + score + ' 分', score >= 6 ? 'ok' : ''); morningMainChoices(); }); } },
+  { ico: '🐹', text: '街机打地鼠', cls: 'green', async: true, fn: function() { whackGame(function(score) { addStat('mood', Math.min(10, score)); log('打地鼠打了 ' + score + ' 只！', score >= 5 ? 'ok' : ''); morningMainChoices(); }); } },
+  { ico: '🧸', text: '抓个娃娃', cls: 'pink', async: true, fn: function() { clawGame(function() { morningMainChoices(); }); } }
 ];
 var SELF_TRAITS = [
   { t: '酸酸对着镜子自言自语："这双眼睛，像秋天的湖……"', m: 4 },
@@ -1544,7 +1548,7 @@ function morningMainChoices() {
     arr.splice(Math.floor(Math.random() * (arr.length + 1)), 0, {
       text: ex.ico + ' ' + ex.text,
       cls: ex.cls,
-      fn: function() { ex.fn(); morningMainChoices(); }
+      fn: function() { ex.fn(); if (!ex.async) morningMainChoices(); }
     });
   }
   choices(arr);
@@ -1570,7 +1574,7 @@ function startWork() {
   workQ(0, 0);
 }
 function workQ(n, score) {
-  if (n >= 5) {
+  if (n >= 2) {
     var g = S();
     $('workQ').classList.add('hidden');
     $('workInput').classList.add('hidden');
@@ -2450,6 +2454,196 @@ function drawPet(x, y, type) {
   }
 }
 
+function memoryGame(onEnd) {
+  var emojis = ['🍎', '🍌', '🍇', '🍑'];
+  var cards = [];
+  for (var i = 0; i < 2; i++) for (var j = 0; j < 4; j++) cards.push(emojis[j]);
+  for (var k = cards.length - 1; k > 0; k--) { var l = Math.floor(Math.random() * (k + 1)); var t = cards[k]; cards[k] = cards[l]; cards[l] = t; }
+  var flipped = [], matched = 0, moves = 0;
+  $('choices').innerHTML = '';
+  $('choices').className = '';
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:6px;';
+  $('choices').appendChild(grid);
+  var btns = [];
+  function check() {
+    moves++;
+    if (cards[flipped[0]] === cards[flipped[1]]) {
+      matched += 2;
+      btns[flipped[0]].textContent = cards[flipped[0]];
+      btns[flipped[0]].disabled = true;
+      btns[flipped[1]].textContent = cards[flipped[1]];
+      btns[flipped[1]].disabled = true;
+      SFX.correct();
+      flipped = [];
+      if (matched === 8) {
+        log('记忆翻牌完成！用了 ' + moves + ' 步', 'ok');
+        setTimeout(function() { $('choices').innerHTML = ''; onEnd(Math.max(0, 12 - moves)); }, 400);
+      }
+    } else {
+      SFX.wrong();
+      var f0 = flipped[0], f1 = flipped[1];
+      setTimeout(function() {
+        btns[f0].textContent = '❓';
+        btns[f1].textContent = '❓';
+        flipped = [];
+      }, 700);
+    }
+  }
+  for (var m = 0; m < 8; m++) {
+    (function(idx) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = '❓';
+      b.style.cssText = 'min-height:52px;font-size:24px;background:#3a465a;border:2px solid #5c6b82;border-radius:10px;cursor:pointer;';
+      b.onclick = function() {
+        if (flipped.length >= 2 || b.disabled || b.textContent !== '❓') return;
+        b.textContent = cards[idx];
+        SFX.pop();
+        flipped.push(idx);
+        if (flipped.length === 2) check();
+      };
+      btns.push(b);
+      grid.appendChild(b);
+    })(m);
+  }
+  logTitle('🃏 记忆翻牌：找出 4 对水果');
+}
+function whackGame(onEnd) {
+  var score = 0, timeLeft = 8;
+  $('choices').innerHTML = '';
+  $('choices').className = '';
+  var box = document.createElement('div');
+  box.style.cssText = 'position:relative;height:150px;background:#3a2f24;border:3px solid #5c6b82;border-radius:12px;margin-bottom:8px;overflow:hidden;';
+  $('choices').appendChild(box);
+  var timer = document.createElement('button');
+  timer.type = 'button';
+  timer.className = 'btn gray';
+  timer.textContent = '🐹 打地鼠！(8s)';
+  $('choices').appendChild(timer);
+  var holes = [];
+  for (var i = 0; i < 6; i++) {
+    var h = document.createElement('div');
+    h.style.cssText = 'position:absolute;width:44px;height:44px;border-radius:50%;background:#241b12;left:' + (8 + (i % 3) * 30) + '%;top:' + (12 + Math.floor(i / 3) * 45) + '%';
+    box.appendChild(h);
+    holes.push(h);
+  }
+  function spawn() {
+    if (timeLeft <= 0) return;
+    var h = holes[Math.floor(Math.random() * holes.length)];
+    var m = document.createElement('button');
+    m.type = 'button';
+    m.textContent = '🐹';
+    m.style.cssText = 'position:absolute;left:' + h.style.left + ';top:' + h.style.top + ';font-size:26px;background:none;border:none;cursor:pointer;';
+    box.appendChild(m);
+    m.onclick = function() { SFX.pop(); score++; this.remove(); };
+    (function(btn) { setTimeout(function() { if (btn.parentNode) btn.remove(); }, 900); })(m);
+  }
+  var iv = setInterval(function() {
+    if (timeLeft <= 0) return;
+    timeLeft--;
+    timer.textContent = '🐹 打地鼠！(' + timeLeft + 's)';
+    spawn();
+    if (timeLeft <= 0) {
+      clearInterval(iv);
+      setTimeout(function() { $('choices').innerHTML = ''; onEnd(score); }, 300);
+    }
+  }, 1000);
+  spawn();
+  spawn();
+}
+function simonGame(onEnd) {
+  var seq = [];
+  var len = 4 + Math.floor(Math.random() * 2);
+  for (var i = 0; i < len; i++) seq.push(Math.floor(Math.random() * 4));
+  var colors = ['#ff5d5d', '#ffd166', '#7ee081', '#7ec8ee'];
+  var step = 0, playing = false;
+  $('choices').innerHTML = '';
+  $('choices').className = '';
+  var row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+  $('choices').appendChild(row);
+  var btns = [];
+  function light(idx, on) { btns[idx].style.background = on ? colors[idx] : 'rgba(255,255,255,.12)'; }
+  function playSeq() {
+    playing = true;
+    for (var s = 0; s < seq.length; s++) {
+      (function(idx, delay) {
+        setTimeout(function() { light(idx, true); SFX.pop(); setTimeout(function() { light(idx, false); }, 350); }, delay);
+      })(seq[s], 500 + s * 600);
+    }
+    setTimeout(function() { playing = false; step = 0; }, 500 + seq.length * 600);
+  }
+  for (var c = 0; c < 4; c++) {
+    (function(idx) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'min-height:56px;font-size:16px;border:none;border-radius:12px;cursor:pointer;';
+      b.onclick = function() {
+        if (playing) return;
+        SFX.pop();
+        light(idx, true);
+        setTimeout(function() { light(idx, false); }, 200);
+        if (seq[step] === idx) {
+          step++;
+          if (step >= seq.length) {
+            log('节奏大师！全对！', 'ok');
+            SFX.fanfare();
+            setTimeout(function() { $('choices').innerHTML = ''; onEnd(seq.length); }, 300);
+          }
+        } else {
+          log('节奏乱了……', 'bad');
+          SFX.wrong();
+          setTimeout(function() { $('choices').innerHTML = ''; onEnd(0); }, 300);
+        }
+      };
+      btns.push(b);
+      row.appendChild(b);
+    })(c);
+  }
+  logTitle('🎵 节奏记忆：记住亮灯顺序并复现');
+  playSeq();
+}
+function clawGame(onEnd) {
+  var bar = document.createElement('div');
+  bar.id = 'fishing';
+  var zoneLeft = 15 + Math.random() * 55;
+  bar.innerHTML = '<div class="zone" style="left:' + zoneLeft + '%;width:26%"></div><div class="needle" style="left:0%"></div>';
+  $('choices').innerHTML = '';
+  $('choices').className = '';
+  $('choices').appendChild(bar);
+  var stop = document.createElement('button');
+  stop.type = 'button';
+  stop.className = 'btn pink';
+  stop.textContent = '🧸 下爪！';
+  $('choices').appendChild(stop);
+  var pos = 0, dir = 1, raf = null;
+  var needle = bar.querySelector('.needle');
+  function tick() {
+    pos += dir * 3.2;
+    if (pos > 96) { pos = 96; dir = -1; }
+    if (pos < 0) { pos = 0; dir = 1; }
+    needle.style.left = pos + '%';
+    raf = requestAnimationFrame(tick);
+  }
+  raf = requestAnimationFrame(tick);
+  stop.onclick = function() {
+    cancelAnimationFrame(raf);
+    var hit = pos >= zoneLeft && pos <= zoneLeft + 26;
+    $('choices').innerHTML = '';
+    if (hit) {
+      var r = Math.random();
+      if (r < 0.5) { addMoney(200); SFX.coin(); log('🧸 抓到一只玩偶，换钱 +200', 'ok'); }
+      else if (r < 0.8) { addStat('luck', 2); log('🍀 抓到幸运娃娃，运气+2', 'ok'); }
+      else { addMoney(1000); SFX.fanfare(); log('🌟 抓到大奖玩偶！+1000 元', 'ok'); }
+    } else {
+      SFX.wrong();
+      log('爪子滑了……什么都没抓到', 'bad');
+    }
+    onEnd(hit ? 1 : 0);
+  };
+}
+
 var PET_LINES = {
   cat: ['喵。', '（猫高傲地走开了）', '罐罐呢？罐罐呢？', '你身上有别的猫的味道……', '呼噜呼噜呼噜'],
   dog: ['汪汪！', '今天可以加餐吗？', '你回来啦！想死我了！', '这袜子……是给我的礼物吗？', '（疯狂摇尾巴）']
@@ -2504,6 +2698,7 @@ function cohabitMenu() {
     { text: '📺 窝沙发看剧', cls: 'blue', fn: function() { cohabitAct('tv'); } },
     { text: '🌙 阳台看星星', cls: 'green', fn: function() { cohabitAct('star'); } },
     { text: '📖 听柚柚讲睡前故事', cls: 'pink', fn: function() { cohabitAct('story'); } },
+    { text: '🃏 和柚柚玩记忆翻牌', cls: 'blue', fn: function() { cohabitAct('memory'); } },
     { text: '↩️ 回去睡觉', cls: 'gray', fn: showNight }
   ]);
 }
@@ -2535,6 +2730,14 @@ function cohabitAct(kind) {
       SFX.chime();
       log('柚柚轻声讲着故事，你听着听着就睡着了……关系+20', 'ok');
       break;
+    case 'memory':
+      memoryGame(function(score) {
+        addStat('mood', 3 + score);
+        addStat('rel', 5 + score * 2);
+        log('和柚柚玩记忆翻牌，关系+' + (5 + score * 2) + '，心情+' + (3 + score), 'ok');
+        showNight();
+      });
+      return;
   }
   showNight();
 }
